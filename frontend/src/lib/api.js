@@ -168,9 +168,13 @@ export function createSupabaseApi(client) {
         limits: LIMITS,
       };
     },
-    async listFiles({ q = "", subject = "", semester = "", type = "", mine = false, sort = "newest", limit = 12, cursor = null }) {
+    async listFiles({ q = "", subject = "", semester = "", type = "", mine = false, saved = false, sort = "newest", limit = 12, cursor = null }) {
       const current = await user();
       let rows = await filesQuery();
+      if (saved) {
+        const ids = new Set(await this.savedIds());
+        rows = rows.filter((row) => ids.has(row.id));
+      }
       const search = q.trim().toLowerCase();
       rows = rows.filter((row) => (
         (!mine || row.uploader_id === current.id) &&
@@ -236,6 +240,65 @@ export function createSupabaseApi(client) {
       const downloadCount = countError ? row.download_count || 0 : Number(counted);
       return { url: data.signedUrl, downloadCount };
     },
+    // ---- saved files ----
+    async savedIds() {
+      const { data, error } = await client.from("bookmarks").select("file_id");
+      if (error) return [];
+      return data.map((row) => row.file_id);
+    },
+    async setSaved(fileId, saved) {
+      const current = await user();
+      const { error } = saved
+        ? await client.from("bookmarks").insert({ user_id: current.id, file_id: fileId })
+        : await client.from("bookmarks").delete().eq("user_id", current.id).eq("file_id", fileId);
+      if (error && error.code !== "23505") throw supabaseError(error, "Could not update your saved files.");
+    },
+
+    // ---- reports ----
+    async reportFile(fileId, reason) {
+      const current = await user();
+      const { error } = await client.from("reports").insert({ file_id: fileId, reporter_id: current.id, reason });
+      if (error?.code === "23505") throw new ApiError(409, "already_reported", "You have already reported this file.");
+      if (error) throw supabaseError(error, "Could not send the report.");
+    },
+    async listReports() {
+      const { data, error } = await client
+        .from("reports")
+        .select("id, reason, status, created_at, file_id, files(title, subject_code, storage_path)")
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+      if (error) throw supabaseError(error, "Could not load reports.");
+      return data.map((row) => ({
+        id: row.id, reason: row.reason, createdAt: row.created_at, fileId: row.file_id,
+        title: row.files?.title || "Deleted file", subjectCode: row.files?.subject_code || "",
+      }));
+    },
+    async resolveReport(reportId, { removeFile = false, fileId } = {}) {
+      if (removeFile) await this.deleteFile(fileId);
+      const { error } = await client.from("reports").update({ status: removeFile ? "removed" : "dismissed" }).eq("id", reportId);
+      // A removed file takes its reports with it (on delete cascade), so a missing row is fine.
+      if (error && !removeFile) throw supabaseError(error, "Could not update the report.");
+    },
+
+    // ---- activity log ----
+    async activity(limit = 15) {
+      const { data, error } = await client.from("activity").select("id, kind, file_title, actor_id, created_at").order("created_at", { ascending: false }).limit(limit);
+      if (error) throw supabaseError(error, "Could not load activity.");
+      const ids = [...new Set(data.map((row) => row.actor_id).filter(Boolean))];
+      const { data: people } = ids.length ? await client.from("profiles").select("id, full_name").in("id", ids) : { data: [] };
+      const names = Object.fromEntries((people || []).map((person) => [person.id, person.full_name]));
+      return data.map((row) => ({ id: row.id, kind: row.kind, title: row.file_title, who: names[row.actor_id] || "Someone", at: row.created_at }));
+    },
+
+    // ---- live updates ----
+    subscribe(onChange) {
+      const channel = client
+        .channel("files-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "files" }, (change) => onChange(change.eventType, change.new?.title || change.old?.title))
+        .subscribe();
+      return () => client.removeChannel(channel);
+    },
+
     async summary() {
       const rows = await filesQuery();
       const subjects = Object.entries(rows.reduce((counts, row) => {

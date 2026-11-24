@@ -19,12 +19,15 @@ function sortLocally(items, sort) {
   return items;
 }
 
-export default function BrowseView({ api, limits, mine = false }) {
+export default function BrowseView({ api, limits, mine = false, saved = false }) {
   const [filters, setFilters] = useState(filtersFromHash);
   const [applied, setApplied] = useState(filtersFromHash); // filters after the typing pause
   const [sort, setSort] = useState("newest");
   const [summary, setSummary] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [savedIds, setSavedIds] = useState(() => new Set());
+  const [refresh, setRefresh] = useState(0); // bumped by live updates to reload the list
+  const [live, setLive] = useState(null); // the latest change another student made
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [state, setState] = useState("loading"); // loading | ready | error | more
@@ -39,14 +42,52 @@ export default function BrowseView({ api, limits, mine = false }) {
 
   useEffect(() => {
     const query = new URLSearchParams(Object.entries(applied).filter(([, value]) => value !== "")).toString();
-    const next = `#/${mine ? "mine" : "library"}${query ? `?${query}` : ""}`;
+    const next = `#/${saved ? "saved" : mine ? "mine" : "library"}${query ? `?${query}` : ""}`;
     if (window.location.hash !== next) window.history.replaceState(null, "", next);
-  }, [applied, mine]);
+  }, [applied, mine, saved]);
 
   useEffect(() => {
-    if (!api.summary || mine) return;
+    if (!api.summary || mine || saved) return;
     api.summary().then(setSummary).catch(() => setSummary(null));
-  }, [api, mine]);
+  }, [api, mine, saved, refresh]);
+
+  useEffect(() => {
+    if (!api.savedIds) return;
+    api.savedIds().then((ids) => setSavedIds(new Set(ids))).catch(() => {});
+  }, [api]);
+
+  // Supabase Realtime pushes every insert and delete on the files table; reload quietly.
+  useEffect(() => {
+    if (!api.subscribe) return undefined;
+    let timer;
+    const stop = api.subscribe((event, title) => {
+      setLive({ event, title });
+      clearTimeout(timer);
+      timer = setTimeout(() => setLive(null), 6000);
+      setRefresh((count) => count + 1);
+    });
+    return () => { clearTimeout(timer); stop(); };
+  }, [api]);
+
+  async function toggleSaved(fileId) {
+    const next = !savedIds.has(fileId);
+    setSavedIds((current) => {
+      const copy = new Set(current);
+      if (next) copy.add(fileId); else copy.delete(fileId);
+      return copy;
+    });
+    try {
+      await api.setSaved(fileId, next);
+      if (saved && !next) setItems((current) => current.filter((item) => item.fileId !== fileId));
+    } catch (failure) {
+      setSavedIds((current) => {
+        const copy = new Set(current);
+        if (next) copy.delete(fileId); else copy.add(fileId);
+        return copy;
+      });
+      setError(failure.message);
+    }
+  }
 
   async function copyLink() {
     try {
@@ -71,7 +112,7 @@ export default function BrowseView({ api, limits, mine = false }) {
     setState("loading");
     setError(null);
     api
-      .listFiles({ q, subject, semester, type, mine, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE })
+      .listFiles({ q, subject, semester, type, mine, saved, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE })
       .then((page) => {
         if (thisRequest !== requestSeq.current) return;
         setItems(sortLocally(page.items, sort));
@@ -87,14 +128,14 @@ export default function BrowseView({ api, limits, mine = false }) {
         setError(failure.message);
         setState("error");
       });
-  }, [api, q, subject, semester, type, mine, sort]);
+  }, [api, q, subject, semester, type, mine, saved, sort, refresh]);
 
   async function loadMore() {
     const thisRequest = requestSeq.current;
     setError(null);
     setState("more");
     try {
-      const page = await api.listFiles({ q, subject, semester, type, mine, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE, cursor });
+      const page = await api.listFiles({ q, subject, semester, type, mine, saved, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE, cursor });
       if (thisRequest !== requestSeq.current) return;
       setItems((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
@@ -113,8 +154,8 @@ export default function BrowseView({ api, limits, mine = false }) {
     <>
       <div className="page-head split">
         <div>
-          <h1>{mine ? "My uploads" : "Library"}</h1>
-          <p className="muted">{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students."}</p>
+          <h1>{saved ? "Saved" : mine ? "My uploads" : "Library"}</h1>
+          <p className="muted">{saved ? "Files you saved for later. Only you can see this list." : mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students."}</p>
           {summary && (
             <p className="figures">
               <span><strong>{summary.files}</strong> files</span>
@@ -125,6 +166,13 @@ export default function BrowseView({ api, limits, mine = false }) {
         </div>
         <a className="button primary" href="#/upload"><Icon name="upload" size={17} /> Upload</a>
       </div>
+
+      {live && (
+        <p className="live" role="status">
+          <span className="live-dot" aria-hidden="true" />
+          {live.event === "DELETE" ? "Removed just now: " : "New just now: "}<strong>{live.title}</strong>
+        </p>
+      )}
 
       <section className="catalogue">
 
@@ -187,8 +235,8 @@ export default function BrowseView({ api, limits, mine = false }) {
 
       {state !== "loading" && state !== "error" && items.length === 0 && (
         <div className="empty">
-          <h2>{hasFilters ? "Nothing matches" : mine ? "You haven't shared anything yet" : "The library is empty"}</h2>
-          <p>{hasFilters ? "Try fewer filters or a different word." : mine ? "Share your first note, lab manual or paper." : "Be the first to add something useful."}</p>
+          <h2>{hasFilters ? "Nothing matches" : saved ? "Nothing saved yet" : mine ? "You haven't shared anything yet" : "The library is empty"}</h2>
+          <p>{hasFilters ? "Try fewer filters or a different word." : saved ? "Use Save on any file in the Library to keep it here." : mine ? "Share your first note, lab manual or paper." : "Be the first to add something useful."}</p>
           {hasFilters
             ? <button className="button" onClick={() => setFilters(EMPTY)}>Clear filters</button>
             : <a className="button primary" href="#/upload">Upload a file</a>}
@@ -204,6 +252,8 @@ export default function BrowseView({ api, limits, mine = false }) {
               api={api}
               onDeleted={(id) => setItems((current) => current.filter((item) => item.fileId !== id))}
               onTag={(tag) => setFilters((current) => ({ ...current, q: tag }))}
+              isSaved={savedIds.has(file.fileId)}
+              onToggleSaved={api.setSaved ? () => toggleSaved(file.fileId) : null}
             />
           ))}
         </ul>

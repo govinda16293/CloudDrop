@@ -56,6 +56,82 @@ function FileTable({ title, files, empty, column }) {
   );
 }
 
+const REASON_LABELS = { "wrong-subject": "Wrong subject or details", broken: "File is broken", duplicate: "Duplicate", inappropriate: "Inappropriate" };
+const ACTIVITY_VERBS = { upload: "uploaded", download: "downloaded", delete: "deleted", report: "reported" };
+
+function Reports({ api }) {
+  const [reports, setReports] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [error, setError] = useState(null);
+  const load = useCallback(() => { api.listReports().then(setReports).catch((failure) => setError(failure.message)); }, [api]);
+  useEffect(load, [load]);
+
+  async function resolve(report, removeFile) {
+    setBusy(report.id);
+    setError(null);
+    try {
+      await api.resolveReport(report.id, { removeFile, fileId: report.fileId });
+      setReports((current) => current.filter((item) => item.id !== report.id && !(removeFile && item.fileId === report.fileId)));
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <section className="panel">
+      <h2>Reports to review {reports && <span className="muted">{reports.length} open</span>}</h2>
+      {error && <p className="notice error" role="alert">{error}</p>}
+      {!reports && !error && <p className="muted">Loading…</p>}
+      {reports?.length === 0 && <p className="muted">Nothing to review.</p>}
+      {reports?.length > 0 && (
+        <table className="list">
+          <thead><tr><th>File</th><th>Reason</th><th>When</th><th className="num">Action</th></tr></thead>
+          <tbody>
+            {reports.map((report) => (
+              <tr key={report.id}>
+                <td><span className="code">{report.subjectCode}</span> {report.title}</td>
+                <td>{REASON_LABELS[report.reason] || report.reason}</td>
+                <td>{formatDate(report.createdAt)}</td>
+                <td className="num">
+                  <button className="button quiet" disabled={busy !== null} onClick={() => resolve(report, false)}>Dismiss</button>
+                  <button className="button quiet danger" disabled={busy !== null} onClick={() => resolve(report, true)}>Remove file</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
+function Activity({ api }) {
+  const [rows, setRows] = useState(null);
+  const [error, setError] = useState(null);
+  useEffect(() => { api.activity().then(setRows).catch((failure) => setError(failure.message)); }, [api]);
+  return (
+    <section className="panel">
+      <h2>Recent activity <span className="muted">logged by database triggers</span></h2>
+      {error && <p className="notice error" role="alert">{error}</p>}
+      {!rows && !error && <p className="muted">Loading…</p>}
+      {rows?.length === 0 && <p className="muted">No activity yet.</p>}
+      {rows?.length > 0 && (
+        <ul className="activity">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <span className={`kind ${row.kind}`}>{ACTIVITY_VERBS[row.kind] || row.kind}</span>
+              <span><strong>{row.who}</strong> {ACTIVITY_VERBS[row.kind] || row.kind} {row.title ? <em>{row.title}</em> : "a file"}</span>
+              <time dateTime={row.at}>{formatDate(row.at)}</time>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export default function AdminView({ api }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
@@ -96,6 +172,13 @@ export default function AdminView({ api }) {
         <Tile label="Downloads" value={totals.downloads} />
         <Tile label="Contributors" value={totals.uploaders} />
       </div>
+
+      {(api.listReports || api.activity) && (
+        <div className="grid-2">
+          {api.listReports && <Reports api={api} />}
+          {api.activity && <Activity api={api} />}
+        </div>
+      )}
 
       <section className="panel">
         <h2>Platform, last {platform.periodHours} hours <span className="muted">from CloudWatch</span></h2>

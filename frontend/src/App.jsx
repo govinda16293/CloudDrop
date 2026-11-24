@@ -12,6 +12,7 @@ const VIEWS = [
   { id: "library", label: "Library", icon: "search" },
   { id: "upload", label: "Upload", icon: "upload" },
   { id: "mine", label: "My uploads", icon: "folder" },
+  { id: "saved", label: "Saved", icon: "bookmark", needs: "savedIds" },
   { id: "admin", label: "Dashboard", icon: "chart", adminOnly: true },
 ];
 
@@ -134,7 +135,7 @@ export default function App() {
   }
 
   const { user, limits } = session;
-  const visible = VIEWS.filter((item) => !item.adminOnly || user.isAdmin);
+  const visible = VIEWS.filter((item) => (!item.adminOnly || user.isAdmin) && (!item.needs || api[item.needs]));
   const current = visible.some((item) => item.id === view) ? view : "library";
 
   const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -166,6 +167,7 @@ export default function App() {
         <main className="page">
           {current === "library" && <BrowseView key="library" api={api} limits={limits} />}
           {current === "mine" && <BrowseView key="mine" api={api} limits={limits} mine />}
+          {current === "saved" && <BrowseView key="saved" api={api} limits={limits} saved />}
           {current === "upload" && <UploadView api={api} limits={limits} />}
           {current === "admin" && <AdminView api={api} />}
         </main>

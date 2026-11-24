@@ -84,3 +84,17 @@ the Supabase SQL Editor. Without it downloads still work; the count just stays p
 - Sort by newest, most downloaded, or title.
 - Filters are kept in the address (`#/library?subject=UCS531`), so a search can be shared.
 - PDFs and images open in the browser through a 5-minute signed URL; other files download.
+
+## Saved files, reports, activity log, live updates (one-time SQL)
+
+Run [`supabase/features.sql`](../supabase/features.sql) once in the SQL Editor
+(it also installs the download counter, so `increment_download.sql` is then not needed).
+It adds `bookmarks`, `reports` and `activity` tables with Row Level Security,
+triggers that write the activity log, and adds `files` to the Realtime publication.
+Until it is run the app hides these features.
+
+To see the Dashboard, make your account an admin:
+
+```sql
+update public.profiles set is_admin = true where email = 'your.name@thapar.edu';
+```

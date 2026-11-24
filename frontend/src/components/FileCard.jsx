@@ -10,11 +10,16 @@ function fileKind(name) {
 }
 
 
-export default function FileCard({ file, api, onDeleted, onTag }) {
+const REASONS = [["wrong-subject", "Wrong subject or details"], ["broken", "File is broken"], ["duplicate", "Duplicate"], ["inappropriate", "Inappropriate"]];
+
+export default function FileCard({ file, api, onDeleted, onTag, isSaved = false, onToggleSaved = null }) {
   const [downloads, setDownloads] = useState(file.downloadCount);
   const [busy, setBusy] = useState(null); // "download" | "delete"
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState(null);
+  const [reporting, setReporting] = useState(false);
+  const [reason, setReason] = useState(REASONS[0][0]);
+  const [reported, setReported] = useState(false);
 
   const previewable = api.supportsPreview && /\.(pdf|png|jpe?g)$/i.test(file.fileName);
 
@@ -50,6 +55,20 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
       document.body.appendChild(link);
       link.click();
       link.remove();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function report() {
+    setBusy("report");
+    setError(null);
+    try {
+      await api.reportFile(file.fileId, reason);
+      setReported(true);
+      setReporting(false);
     } catch (failure) {
       setError(failure.message);
     } finally {
@@ -100,6 +119,24 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
         <button className="button" onClick={download} disabled={busy !== null}>
           <Icon name="download" size={16} /> {busy === "download" ? "Preparing…" : "Download"}
         </button>
+        {onToggleSaved && (
+          <button className={`button quiet${isSaved ? " saved" : ""}`} onClick={onToggleSaved} aria-pressed={isSaved} title={isSaved ? "Remove from Saved" : "Save for later"}>
+            <Icon name="bookmark" size={16} /> {isSaved ? "Saved" : "Save"}
+          </button>
+        )}
+        {api.reportFile && !file.isMine && !reported && !reporting && (
+          <button className="button quiet" onClick={() => setReporting(true)} title="Report a problem with this file"><Icon name="flag" size={15} /> Report</button>
+        )}
+        {reported && <span className="reported">Reported, thanks</span>}
+        {reporting && (
+          <span className="confirm" role="group" aria-label="Report this file">
+            <select className="reason" value={reason} onChange={(event) => setReason(event.target.value)} aria-label="Reason">
+              {REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+            <button className="button" onClick={report} disabled={busy !== null}>{busy === "report" ? "Sending…" : "Send report"}</button>
+            <button className="button quiet" onClick={() => setReporting(false)}>Cancel</button>
+          </span>
+        )}
         {file.canDelete && !confirming && (
           <button className="button quiet danger" onClick={() => setConfirming(true)} disabled={busy !== null}>Delete</button>
         )}
