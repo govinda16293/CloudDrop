@@ -7,39 +7,39 @@ function Field({ label, hint, type, ...input }) {
   const [shown, setShown] = useState(false);
   const secret = type === "password";
   return (
-    <label className="field">
-      <span className="visually-hidden">{label}</span>
-      <span className="input-wrap">
-        <Icon name={ICONS[type] || "user"} size={19} />
-        <input {...input} type={secret && shown ? "text" : type} placeholder={input.placeholder || label} />
+    <label className="flex flex-col gap-1.5">
+      <span className="sr-only">{label}</span>
+      <span className="relative block text-white/85">
+        <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2"><Icon name={ICONS[type] || "user"} size={19} /></span>
+        <input {...input} className="h-13 w-full rounded-xl border border-white/45 bg-white/12 pl-12 pr-12 text-[15px] font-medium text-white outline-none transition placeholder:text-white/80 focus:border-white focus:bg-white/20 focus:ring-3 focus:ring-white/25" type={secret && shown ? "text" : type} placeholder={input.placeholder || label} />
         {secret && (
-          <button type="button" className="reveal" onClick={() => setShown(!shown)} aria-label={shown ? "Hide password" : "Show password"}>
+          <button type="button" className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-lg text-white/85 transition hover:bg-white/15 hover:text-white" onClick={() => setShown(!shown)} aria-label={shown ? "Hide password" : "Show password"}>
             <Icon name={shown ? "eye" : "eyeOff"} size={19} />
           </button>
         )}
       </span>
-      {hint && <small>{hint}</small>}
+      {hint && <small className="text-[12.5px] text-white/80">{hint}</small>}
     </label>
   );
 }
 
 function FormHead({ title, sub }) {
   return (
-    <div className="form-head">
-      <h2>{title}</h2>
-      <p>{sub}</p>
+    <div className="mb-2">
+      <h2 className="text-3xl font-extrabold tracking-tight">{title}</h2>
+      <p className="mt-1.5 text-[15px] text-white/78">{sub}</p>
     </div>
   );
 }
 
-const Arrow = () => <Icon name="arrow" size={18} />;
+const Arrow = () => <span className="transition group-hover:translate-x-0.5"><Icon name="arrow" size={18} /></span>;
 
 function LocalSignIn({ auth, onSignedIn, run, busy }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [admin, setAdmin] = useState(false);
   return (
-    <form
+    <form className="flex flex-col gap-3.5"
       onSubmit={(event) => {
         event.preventDefault();
         run(async () => {
@@ -49,14 +49,14 @@ function LocalSignIn({ auth, onSignedIn, run, busy }) {
       }}
     >
       <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
-      <p className="notice">Local mode has no passwords. Enter any @{auth.emailDomain} address to try the app.</p>
+      <p className="rounded-xl border border-white/30 bg-white/18 px-3.5 py-3 text-sm font-medium text-white">Local mode has no passwords. Enter any @{auth.emailDomain} address to try the app.</p>
       <Field label="College e-mail" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`you@${auth.emailDomain}`} />
       <Field label="Your name" type="text" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-      <label className="check">
-        <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
+      <label className="flex items-center gap-2 text-[14.5px] font-semibold text-white">
+        <input className="size-4.5 accent-terracotta-500" type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
         Sign in as an admin
       </label>
-      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
     </form>
   );
 }
@@ -90,7 +90,7 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
 
   if (step === "signUp") {
     return (
-      <form onSubmit={submit(async () => {
+      <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
         try {
           await auth.signUp({ email, password, name });
         } catch (error) {
@@ -110,14 +110,14 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
         <Field label="Your name" type="text" required maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
         {emailField}
         {passwordField("Password", "new-password")}
-        <button className="button primary wide" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
-        <p className="switch">Have an account? <button type="button" className="link" onClick={() => goToStep("signIn")}>Sign in</button></p>
+        <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
+        <p className="mt-1 text-center text-[14.5px] text-white/85">Have an account? <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => goToStep("signIn")}>Sign in</button></p>
       </form>
     );
   }
   if (step === "confirm") {
     return (
-      <form onSubmit={submit(async () => {
+      <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
         await auth.confirmSignUp({ email, code });
         if (password) {
           await auth.signIn({ email, password });
@@ -126,34 +126,34 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
       })}>
         {emailField}
         {codeField}
-        <button className="button primary wide" disabled={busy}>{busy ? "Checking…" : "Confirm e-mail"}</button>
-        <p className="switch">
-          <button type="button" className="link" disabled={busy} onClick={() => run(async () => {
+        <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Checking…" : "Confirm e-mail"}</button>
+        <p className="mt-1 text-center text-[14.5px] text-white/85">
+          <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" disabled={busy} onClick={() => run(async () => {
             await auth.resendCode({ email });
             setMessage({ kind: "info", text: "A new code is on its way." });
           })}>Send a new code</button>
           {" · "}
-          <button type="button" className="link" onClick={() => goToStep("signIn")}>Back to sign in</button>
+          <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => goToStep("signIn")}>Back to sign in</button>
         </p>
       </form>
     );
   }
   if (step === "forgot") {
     return (
-      <form onSubmit={submit(async () => {
+      <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
         await auth.forgotPassword({ email });
         setPassword("");
         goToStep("reset", "We sent a code to your e-mail. Enter it with a new password.");
       })}>
         {emailField}
-        <button className="button primary wide" disabled={busy}>{busy ? "Sending…" : "Send reset code"}</button>
-        <p className="switch"><button type="button" className="link" onClick={() => goToStep("signIn")}>Back to sign in</button></p>
+        <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Sending…" : "Send reset code"}</button>
+        <p className="mt-1 text-center text-[14.5px] text-white/85"><button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => goToStep("signIn")}>Back to sign in</button></p>
       </form>
     );
   }
   if (step === "reset") {
     return (
-      <form onSubmit={submit(async () => {
+      <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
         await auth.confirmNewPassword({ email, code, password });
         await auth.signIn({ email, password });
         await onSignedIn();
@@ -161,12 +161,12 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
         {emailField}
         {codeField}
         {passwordField("New password", "new-password")}
-        <button className="button primary wide" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
+        <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
       </form>
     );
   }
   return (
-    <form onSubmit={submit(async () => {
+    <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
       try {
         await auth.signIn({ email, password });
       } catch (error) {
@@ -178,11 +178,11 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
       <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
       {emailField}
       {passwordField("Password", "current-password")}
-      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-      <p className="switch">
-        New here? <button type="button" className="link" onClick={() => goToStep("signUp")}>Create an account</button>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      <p className="mt-1 text-center text-[14.5px] text-white/85">
+        New here? <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => goToStep("signUp")}>Create an account</button>
         {" · "}
-        <button type="button" className="link" onClick={() => goToStep("forgot")}>Forgot password</button>
+        <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => goToStep("forgot")}>Forgot password</button>
       </p>
     </form>
   );
@@ -202,7 +202,7 @@ function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
   const submit = (action) => (event) => { event.preventDefault(); run(action); };
 
   if (step === "signUp") return (
-    <form onSubmit={submit(async () => {
+    <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
       const signedIn = await auth.signUp({ email, password, name });
       if (signedIn) return onSignedIn();
       go("signIn", "Check your college inbox to confirm your e-mail, then sign in.");
@@ -210,35 +210,35 @@ function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
       <FormHead title="Create your account" sub="Use your @thapar.edu e-mail" />
       <Field label="Your name" type="text" required maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
       {emailField}{passwordField("Password", "new-password")}
-      <button className="button primary wide" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
-      <p className="switch">Have an account? <button type="button" className="link" onClick={() => go("signIn")}>Sign in</button></p>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
+      <p className="mt-1 text-center text-[14.5px] text-white/85">Have an account? <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => go("signIn")}>Sign in</button></p>
     </form>
   );
   if (step === "forgot") return (
-    <form onSubmit={submit(async () => {
+    <form className="flex flex-col gap-3.5" onSubmit={submit(async () => {
       await auth.forgotPassword({ email });
       go("signIn", "A password reset link has been sent to your college e-mail.");
     })}>
       <FormHead title="Reset password" sub="We will e-mail you a reset link" />
       {emailField}
-      <button className="button primary wide" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
-      <p className="switch"><button type="button" className="link" onClick={() => go("signIn")}>Back to sign in</button></p>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
+      <p className="mt-1 text-center text-[14.5px] text-white/85"><button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => go("signIn")}>Back to sign in</button></p>
     </form>
   );
   if (step === "reset") return (
-    <form onSubmit={submit(async () => { await auth.updatePassword({ password }); await onSignedIn(); })}>
+    <form className="flex flex-col gap-3.5" onSubmit={submit(async () => { await auth.updatePassword({ password }); await onSignedIn(); })}>
       <FormHead title="Choose a new password" sub="At least 8 characters" />
       {passwordField("New password", "new-password")}
-      <button className="button primary wide" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
     </form>
   );
   return (
-    <form onSubmit={submit(async () => { await auth.signIn({ email, password }); await onSignedIn(); })}>
+    <form className="flex flex-col gap-3.5" onSubmit={submit(async () => { await auth.signIn({ email, password }); await onSignedIn(); })}>
       <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
       {emailField}{passwordField("Password", "current-password")}
-      <p className="forgot"><button type="button" className="link" onClick={() => go("forgot")}>Forgot password?</button></p>
-      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
-      <p className="switch">Don't have an account? <button type="button" className="link" onClick={() => go("signUp")}>Create one</button></p>
+      <p className="-mt-1 text-right text-sm"><button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => go("forgot")}>Forgot password?</button></p>
+      <button className="group inline-flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/30 bg-linear-to-b from-terracotta-400 to-terracotta-600 text-base font-bold text-white shadow-[0_8px_20px_rgba(120,40,25,0.35)] transition hover:from-terracotta-500 hover:to-terracotta-700 disabled:cursor-default disabled:opacity-60" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
+      <p className="mt-1 text-center text-[14.5px] text-white/85">Don't have an account? <button type="button" className="cursor-pointer font-bold text-white underline decoration-white/60 underline-offset-4 hover:decoration-white disabled:opacity-60" onClick={() => go("signUp")}>Create one</button></p>
     </form>
   );
 }
@@ -260,17 +260,32 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
   }
 
   return (
-    <main className="auth">
-      <header className="auth-top">
-        {logo}
-        <p className="auth-words" aria-hidden="true"><span>Share</span><span>Search</span><span>Learn</span></p>
+    <main className="relative grid min-h-screen grid-cols-1 gap-7 bg-cover bg-[center_65%] px-5 pt-9 pb-8 font-sans text-white sm:px-10 lg:grid-cols-[1.15fr_minmax(340px,440px)] lg:grid-rows-[auto_1fr_auto] lg:gap-x-12 lg:px-16"
+      style={{ backgroundImage: "linear-gradient(90deg, rgba(12,16,22,.55) 0%, rgba(12,16,22,.2) 45%, rgba(12,16,22,0) 70%), linear-gradient(180deg, rgba(10,20,35,.15) 0%, rgba(10,20,35,0) 38%, rgba(25,10,5,.5) 100%), url(/campus.webp)" }}>
+      <header className="flex items-center justify-between gap-4 lg:col-span-2">
+        <span className="drop-shadow">{logo}</span>
+        <p className="hidden text-xs font-bold tracking-[0.24em] uppercase drop-shadow md:flex" aria-hidden="true">
+          {["Share", "Search", "Learn"].map((word, i) => (
+            <span key={word} className={`px-7 ${i ? "border-l border-white/60" : ""}`}>{word}</span>
+          ))}
+        </p>
       </header>
-      <section className="auth-intro">
-        <h1>Notes<br />that outlast<br />the semester.</h1>
-        <p className="kicker">Thapar's shared library<br />for notes, labs and papers</p>
+
+      <section className="self-center">
+        <h1 className="text-[clamp(44px,7vw,92px)] leading-[0.95] font-extrabold tracking-tight uppercase drop-shadow-[0_2px_18px_rgba(0,0,0,0.25)]">
+          Notes<br />that outlast<br />the semester.
+        </h1>
+        <p className="mt-6 ml-1 text-[12.5px] leading-[1.9] font-bold tracking-[0.24em] text-white/90 uppercase drop-shadow">
+          Thapar's shared library<br />for notes, labs and papers
+        </p>
       </section>
-      <section className="auth-card" aria-label="Sign in">
-        {message && <p className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>}
+
+      <section aria-label="Sign in"
+        className="flex flex-col gap-3.5 self-center rounded-3xl border border-white/45 bg-white/15 px-6 py-8 shadow-[0_24px_60px_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-125 sm:px-9 sm:py-10">
+        {message && (
+          <p className={`rounded-xl border px-3.5 py-3 text-sm font-medium ${message.kind === "error" ? "border-red-200/50 bg-red-700/55" : "border-white/30 bg-white/18"}`}
+            role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>
+        )}
         {auth.mode === "local" ? (
           <LocalSignIn auth={auth} onSignedIn={onSignedIn} run={run} busy={busy} />
         ) : auth.mode === "supabase" ? (
@@ -279,10 +294,21 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
           <CognitoForms auth={auth} onSignedIn={onSignedIn} run={run} busy={busy} setMessage={setMessage} />
         )}
       </section>
-      <ul className="auth-features">
-        <li><Icon name="users" size={26} /><span><strong>Campus only</strong>@{auth.emailDomain} accounts</span></li>
-        <li><Icon name="lock" size={26} /><span><strong>Private storage</strong>Signed, short-lived links</span></li>
-        <li><Icon name="search" size={26} /><span><strong>Find fast</strong>Search by subject code</span></li>
+
+      <ul className="flex flex-wrap gap-y-4 lg:col-span-2">
+        {[
+          ["users", "Campus only", `@${auth.emailDomain} accounts`],
+          ["lock", "Private storage", "Signed, short-lived links"],
+          ["search", "Find fast", "Search by subject code"],
+        ].map(([icon, title, text], i) => (
+          <li key={title} className={`flex basis-full items-center gap-3.5 drop-shadow sm:basis-auto sm:px-8 ${i ? "sm:border-l sm:border-white/45" : "sm:pl-1"}`}>
+            <Icon name={icon} size={26} />
+            <span className="flex flex-col text-[13.5px] text-white/90">
+              <strong className="text-xs tracking-[0.2em] text-white uppercase">{title}</strong>
+              {text}
+            </span>
+          </li>
+        ))}
       </ul>
     </main>
   );

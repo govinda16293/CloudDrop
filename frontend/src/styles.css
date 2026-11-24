@@ -1,5 +1,19 @@
-/* CloudDrop - campus architecture: stone, charcoal and one terracotta accent; glass over a campus scene. */
+/* CloudDrop - campus architecture: stone, charcoal and one terracotta accent; glass over a campus photo.
+   Tailwind v4 provides the reset and utilities; the sign-in page is built from utilities,
+   the app screens use the component classes below. */
 
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --color-terracotta-400: #c4644f;
+  --color-terracotta-500: #b4533f;
+  --color-terracotta-600: #a2483a;
+  --color-terracotta-700: #8f3d2e;
+  --color-blush: #ffd2c6;
+}
+
+@layer components {
 :root {
   --bg: #f4f2ee;
   --surface: #ffffff;
@@ -22,7 +36,7 @@
   --info-soft: #eef2f5;
   --shadow: 0 1px 2px rgba(30, 25, 20, 0.05), 0 6px 18px rgba(30, 25, 20, 0.06);
   --shadow-lg: 0 2px 6px rgba(30, 25, 20, 0.06), 0 16px 36px rgba(30, 25, 20, 0.1);
-  --scene: url("/campus.svg"); /* swap for a real campus photo, e.g. url("/campus.jpg") */
+  --scene: url("/campus.webp");
   --sans: "Manrope", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
   color-scheme: light;
@@ -209,69 +223,6 @@ a { color: inherit; }
 .filters > .button.quiet { min-height: 40px; }
 .filters + .hint { margin-left: 22px; }
 
-/* ---- sign in: campus scene with a glass card ---- */
-
-.auth {
-  position: relative; min-height: 100vh; padding: 36px clamp(20px, 5vw, 64px) 32px;
-  display: grid; grid-template-columns: 1.15fr minmax(320px, 440px); grid-template-rows: auto 1fr auto; gap: 28px 48px;
-  background: linear-gradient(180deg, rgba(10, 20, 35, 0.15) 0%, rgba(10, 20, 35, 0) 40%, rgba(20, 10, 5, 0.45) 100%), var(--scene);
-  background-size: cover; background-position: center 65%;
-  color: #fff;
-}
-.auth-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.auth-top .logo { text-shadow: 0 1px 8px rgba(0, 0, 0, 0.2); }
-.auth-words { display: flex; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; }
-.auth-words span { padding: 2px 26px; border-left: 1px solid rgba(255, 255, 255, 0.55); }
-.auth-words span:first-child { border-left: 0; }
-.auth-intro { align-self: center; }
-.auth-intro h1 { font-size: clamp(44px, 6.6vw, 88px); line-height: 0.95; text-transform: uppercase; letter-spacing: -0.015em; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.18); }
-.kicker { margin: 22px 0 0 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; line-height: 1.8; color: rgba(255, 255, 255, 0.85); }
-.auth-card {
-  align-self: center; display: flex; flex-direction: column; gap: 14px;
-  padding: 40px 36px 34px; border-radius: 22px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(22px) saturate(1.2); -webkit-backdrop-filter: blur(22px) saturate(1.2);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-  color: #fff;
-}
-.auth-card form { display: flex; flex-direction: column; gap: 14px; }
-.form-head { margin-bottom: 10px; }
-.form-head h2 { font-size: 30px; letter-spacing: -0.02em; }
-.form-head p { margin-top: 6px; color: rgba(255, 255, 255, 0.78); font-size: 15px; }
-.input-wrap { position: relative; display: block; }
-.input-wrap > .icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, 0.85); pointer-events: none; }
-.auth-card .field input {
-  min-height: 52px; padding-left: 48px; padding-right: 48px; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.45); color: #fff;
-}
-.auth-card .field input::placeholder { color: rgba(255, 255, 255, 0.8); opacity: 1; }
-.auth-card .field input:focus { border-color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.2); }
-.auth-card .field small { color: rgba(255, 255, 255, 0.78); }
-.reveal { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: rgba(255, 255, 255, 0.85); cursor: pointer; }
-.reveal:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
-.forgot { text-align: right; margin-top: -4px; font-size: 14px; }
-.auth-card .link { color: #fff; text-decoration-color: rgba(255, 255, 255, 0.6); }
-.auth-card .switch .link { color: #ffd2c6; }
-.auth-card .button.primary { min-height: 54px; border-radius: 12px; font-size: 16px; background: linear-gradient(180deg, #c4644f, #a2483a); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 8px 20px rgba(120, 40, 25, 0.35); }
-.auth-card .button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #b4533f, #8f3d2e); }
-.auth-card .notice { background: rgba(255, 255, 255, 0.18); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
-.auth-card .notice.error { background: rgba(194, 50, 31, 0.55); }
-.auth-card .check { color: #fff; }
-.switch { margin-top: 8px; font-size: 14.5px; color: rgba(255, 255, 255, 0.85); text-align: center; }
-.auth-features { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px 0; }
-.auth-features li { display: flex; align-items: center; gap: 14px; padding: 0 34px; border-left: 1px solid rgba(255, 255, 255, 0.4); }
-.auth-features li:first-child { padding-left: 4px; border-left: 0; }
-.auth-features span { display: flex; flex-direction: column; font-size: 13.5px; color: rgba(255, 255, 255, 0.88); }
-.auth-features strong { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: #fff; }
-@media (max-width: 900px) {
-  .auth { grid-template-columns: 1fr; grid-template-rows: auto; gap: 28px; }
-  .auth-words { display: none; }
-  .auth-intro h1 { font-size: clamp(40px, 12vw, 64px); }
-  .auth-card { padding: 30px 22px; }
-  .auth-features li { padding: 0 18px 0 0; border-left: 0; flex-basis: 100%; }
-}
-
 /* ---- library cards ---- */
 
 .cards { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 18px; }
@@ -400,4 +351,5 @@ table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
   .filters .field.pill { flex: 1 1 140px; }
   .hero .button { width: 100%; }
   .upload { padding: 18px; }
+}
 }
