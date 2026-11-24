@@ -79,6 +79,25 @@ export function createApi({ apiBase, getToken, onUnauthorized, fetchImpl = (...a
     getDownload: (fileId) => request("GET", `/files/${id(fileId)}/download`),
     deleteFile: (fileId) => request("DELETE", `/files/${id(fileId)}`),
     adminStats: () => request("GET", "/admin/stats"),
+    // The REST API has no summary route; walk a few pages of the list instead.
+    async summary() {
+      const files = [];
+      let cursor = null;
+      for (let page = 0; page < 5; page += 1) {
+        const result = await request("GET", `/files${buildQuery({ limit: 50, cursor })}`);
+        files.push(...result.items);
+        cursor = result.nextCursor;
+        if (!cursor) break;
+      }
+      const counts = files.reduce((all, file) => ({ ...all, [file.subjectCode]: (all[file.subjectCode] || 0) + 1 }), {});
+      const subjects = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      return {
+        files: files.length,
+        subjects: subjects.length,
+        downloads: files.reduce((sum, file) => sum + (file.downloadCount || 0), 0),
+        topSubjects: subjects.slice(0, 6).map(([code, count]) => ({ code, files: count })),
+      };
+    },
   };
 }
 
@@ -135,6 +154,7 @@ export function createSupabaseApi(client) {
   }
 
   return {
+    supportsPreview: true,
     async me() {
       const current = await user();
       const { data: profile, error } = await client
@@ -148,7 +168,7 @@ export function createSupabaseApi(client) {
         limits: LIMITS,
       };
     },
-    async listFiles({ q = "", subject = "", semester = "", type = "", mine = false, limit = 12, cursor = null }) {
+    async listFiles({ q = "", subject = "", semester = "", type = "", mine = false, sort = "newest", limit = 12, cursor = null }) {
       const current = await user();
       let rows = await filesQuery();
       const search = q.trim().toLowerCase();
@@ -160,6 +180,8 @@ export function createSupabaseApi(client) {
         (!search || [row.title, row.file_name, row.description, ...(row.tags || []), row.profiles?.full_name]
           .filter(Boolean).some((value) => value.toLowerCase().includes(search)))
       ));
+      if (sort === "downloads") rows = [...rows].sort((a, b) => (b.download_count || 0) - (a.download_count || 0));
+      if (sort === "title") rows = [...rows].sort((a, b) => a.title.localeCompare(b.title));
       const start = Number(cursor || 0);
       const page = rows.slice(start, start + limit).map((row) => toFile(row, current.id));
       const next = start + limit < rows.length ? String(start + limit) : null;
@@ -203,12 +225,29 @@ export function createSupabaseApi(client) {
       const current = await user();
       return toFile(data, current.id);
     },
-    async getDownload(fileId) {
+    async getDownload(fileId, { preview = false } = {}) {
       const { data: row, error: fileError } = await client.from("files").select("storage_path, download_count").eq("id", fileId).single();
       if (fileError) throw supabaseError(fileError, "Could not find that file.");
-      const { data, error } = await client.storage.from("resources").createSignedUrl(row.storage_path, 300, { download: true });
+      const { data, error } = await client.storage.from("resources").createSignedUrl(row.storage_path, 300, preview ? {} : { download: true });
       if (error) throw supabaseError(error, "Could not prepare the download.");
-      return { url: data.signedUrl, downloadCount: row.download_count || 0 };
+      // Counting needs the increment_download database function (supabase/schema.sql):
+      // students may not update other people's rows directly.
+      const { data: counted, error: countError } = await client.rpc("increment_download", { file_id: fileId });
+      const downloadCount = countError ? row.download_count || 0 : Number(counted);
+      return { url: data.signedUrl, downloadCount };
+    },
+    async summary() {
+      const rows = await filesQuery();
+      const subjects = Object.entries(rows.reduce((counts, row) => {
+        counts[row.subject_code] = (counts[row.subject_code] || 0) + 1;
+        return counts;
+      }, {})).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      return {
+        files: rows.length,
+        subjects: subjects.length,
+        downloads: rows.reduce((sum, row) => sum + (row.download_count || 0), 0),
+        topSubjects: subjects.slice(0, 6).map(([code, files]) => ({ code, files })),
+      };
     },
     async deleteFile(fileId) {
       const { data: row, error: findError } = await client.from("files").select("storage_path").eq("id", fileId).single();

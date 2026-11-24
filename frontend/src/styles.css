@@ -401,4 +401,67 @@ h1 { font-size: clamp(28px, 3.4vw, 36px); }
   .entry-actions { justify-content: flex-start; }
   .banner { height: 130px; }
 }
+
+/* ---- inside the app: the library photo, dimmed but sharp, with frosted panels ---- */
+
+.shell {
+  --bg: #121413;
+  --surface: rgba(20, 22, 21, 0.62);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --ink: #f3f0ea;
+  --muted: #c4bfb6;
+  --line: rgba(255, 255, 255, 0.14);
+  --accent: #dd7a63;
+  --accent-dark: #c4644f;
+  --accent-soft: rgba(221, 122, 99, 0.18);
+  --sky: #9cc4ec;
+  --sky-soft: rgba(156, 196, 236, 0.14);
+  --green: #9fd08f;
+  --green-soft: rgba(159, 208, 143, 0.14);
+  --danger: #ff8a75;
+  --danger-soft: rgba(255, 110, 90, 0.16);
+  --info-soft: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(10, 11, 11, 0.38) 0%, rgba(10, 11, 11, 0.55) 45%, rgba(10, 11, 11, 0.74) 100%),
+    url("/library.webp") center 40% / cover fixed;
+}
+.sidebar { background: rgba(14, 16, 15, 0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-right: 1px solid var(--line); }
+.page-head h1, .page-head .muted { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35); }
+.page-head .muted { color: #e3dfd8; }
+
+.catalogue, .upload, .panel, .tile, .empty {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(18px) saturate(1.1); -webkit-backdrop-filter: blur(18px) saturate(1.1);
+}
+.catalogue { padding: 18px 20px 6px; border-radius: 14px; }
+.entries { border-top-color: var(--line); }
+.entry:last-child { border-bottom: 0; }
+.entry:hover { background: rgba(255, 255, 255, 0.04); }
+.field input, .field select, .field textarea, .searchbox input { background: rgba(0, 0, 0, 0.28); border-color: var(--line); color: var(--ink); }
+.field select option { background: #1b1d1c; color: #f3f0ea; }
+.button { background: rgba(255, 255, 255, 0.06); border-color: var(--line); color: var(--ink); }
+.button:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.4); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: #1a0d09; }
+.button.primary:hover:not(:disabled) { background: #e98d77; border-color: #e98d77; }
+.button.quiet { background: transparent; border-color: transparent; }
+.drop { background: rgba(0, 0, 0, 0.2); border-color: var(--line); }
+.localbar { background: rgba(0, 0, 0, 0.55); }
+.tiles.small .tile { background: rgba(0, 0, 0, 0.22); }
+
+.figures { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: 6px; font-size: 14px; color: #e3dfd8; }
+.figures strong { font-size: 20px; font-weight: 800; color: #fff; margin-right: 5px; font-variant-numeric: tabular-nums; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 2px 0 10px; }
+.shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.shortcut { padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); font: 700 12.5px var(--mono); cursor: pointer; }
+.shortcut span { margin-left: 4px; color: var(--muted); font-weight: 500; }
+.shortcut:hover { border-color: var(--accent); }
+.shortcut.on { background: var(--accent); border-color: var(--accent); color: #1a0d09; }
+.shortcut.on span { color: #3a1a12; }
+.toolbar-end { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.sort { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sort select { min-height: 34px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0, 0, 0, 0.28); color: var(--ink); font: 600 13.5px var(--sans); }
+.sort select option { background: #1b1d1c; }
 }

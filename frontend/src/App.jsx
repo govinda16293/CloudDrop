@@ -18,7 +18,7 @@ const VIEWS = [
 // Views live in the # part of the address. CloudFront then never sees a path
 // it has no file for, so it needs no rewrite rule that would also catch /api.
 function viewFromHash() {
-  const id = window.location.hash.replace(/^#\/?/, "");
+  const id = window.location.hash.replace(/^#\/?/, "").split("?")[0];
   return VIEWS.some((view) => view.id === id) ? id : "library";
 }
 

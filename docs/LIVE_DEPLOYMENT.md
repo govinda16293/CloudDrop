@@ -69,3 +69,18 @@ Authentication → URL Configuration:
 |---|---|
 | Site URL | `https://clouddrop-five.vercel.app` |
 | Redirect URLs | `https://clouddrop-five.vercel.app/**` |
+
+## Download counter (one-time SQL)
+
+Students may only update their own rows, so the download counter is bumped by a
+small `security definer` function. Run
+[`supabase/increment_download.sql`](../supabase/increment_download.sql) once in
+the Supabase SQL Editor. Without it downloads still work; the count just stays put.
+
+## Library features
+
+- Search by title, tag, file name or uploader; filter by subject, semester, type.
+- Popular-subject shortcuts and live totals (files, subjects, downloads).
+- Sort by newest, most downloaded, or title.
+- Filters are kept in the address (`#/library?subject=UCS531`), so a search can be shared.
+- PDFs and images open in the browser through a 5-minute signed URL; other files download.

@@ -16,6 +16,26 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState(null);
 
+  const previewable = api.supportsPreview && /\.(pdf|png|jpe?g)$/i.test(file.fileName);
+
+  async function preview() {
+    setBusy("preview");
+    setError(null);
+    // Open the tab now: browsers block windows opened after an await.
+    const tab = window.open("about:blank", "_blank");
+    try {
+      const result = await api.getDownload(file.fileId, { preview: true });
+      setDownloads(result.downloadCount);
+      if (tab) tab.location.href = result.url;
+      else window.location.href = result.url;
+    } catch (failure) {
+      tab?.close();
+      setError(failure.message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function download() {
     setBusy("download");
     setError(null);
@@ -74,6 +94,9 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
         {error && <p className="notice error" role="alert">{error}</p>}
       </div>
       <div className="entry-actions">
+        {previewable && (
+          <button className="button quiet" onClick={preview} disabled={busy !== null}>{busy === "preview" ? "Opening…" : "Open"}</button>
+        )}
         <button className="button" onClick={download} disabled={busy !== null}>
           <Icon name="download" size={16} /> {busy === "download" ? "Preparing…" : "Download"}
         </button>

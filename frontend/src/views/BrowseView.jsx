@@ -5,10 +5,26 @@ import { SEMESTERS, isSubjectCode, typeLabel } from "../lib/format.js";
 
 const EMPTY = { q: "", subject: "", semester: "", type: "" };
 const PAGE_SIZE = 12;
+const SORTS = [["newest", "Newest"], ["downloads", "Most downloaded"], ["title", "Title A–Z"]];
+
+// Filters live in the address (#/library?subject=UCS531&q=unit) so a search can be shared.
+function filtersFromHash() {
+  const query = new URLSearchParams(window.location.hash.split("?")[1] || "");
+  return { q: query.get("q") || "", subject: query.get("subject") || "", semester: query.get("semester") || "", type: query.get("type") || "" };
+}
+
+function sortLocally(items, sort) {
+  if (sort === "downloads") return [...items].sort((a, b) => b.downloadCount - a.downloadCount);
+  if (sort === "title") return [...items].sort((a, b) => a.title.localeCompare(b.title));
+  return items;
+}
 
 export default function BrowseView({ api, limits, mine = false }) {
-  const [filters, setFilters] = useState(EMPTY);
-  const [applied, setApplied] = useState(EMPTY); // filters after the typing pause
+  const [filters, setFilters] = useState(filtersFromHash);
+  const [applied, setApplied] = useState(filtersFromHash); // filters after the typing pause
+  const [sort, setSort] = useState("newest");
+  const [summary, setSummary] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [state, setState] = useState("loading"); // loading | ready | error | more
@@ -20,6 +36,27 @@ export default function BrowseView({ api, limits, mine = false }) {
     const timer = setTimeout(() => setApplied(filters), 300);
     return () => clearTimeout(timer);
   }, [filters]);
+
+  useEffect(() => {
+    const query = new URLSearchParams(Object.entries(applied).filter(([, value]) => value !== "")).toString();
+    const next = `#/${mine ? "mine" : "library"}${query ? `?${query}` : ""}`;
+    if (window.location.hash !== next) window.history.replaceState(null, "", next);
+  }, [applied, mine]);
+
+  useEffect(() => {
+    if (!api.summary || mine) return;
+    api.summary().then(setSummary).catch(() => setSummary(null));
+  }, [api, mine]);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   // A half-typed subject code is not applied yet: the list keeps following the
   // other filters and a hint asks for the full code.
@@ -34,10 +71,10 @@ export default function BrowseView({ api, limits, mine = false }) {
     setState("loading");
     setError(null);
     api
-      .listFiles({ q, subject, semester, type, mine, limit: PAGE_SIZE })
+      .listFiles({ q, subject, semester, type, mine, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE })
       .then((page) => {
         if (thisRequest !== requestSeq.current) return;
-        setItems(page.items);
+        setItems(sortLocally(page.items, sort));
         setCursor(page.nextCursor);
         setState("ready");
       })
@@ -50,14 +87,14 @@ export default function BrowseView({ api, limits, mine = false }) {
         setError(failure.message);
         setState("error");
       });
-  }, [api, q, subject, semester, type, mine]);
+  }, [api, q, subject, semester, type, mine, sort]);
 
   async function loadMore() {
     const thisRequest = requestSeq.current;
     setError(null);
     setState("more");
     try {
-      const page = await api.listFiles({ q, subject, semester, type, mine, limit: PAGE_SIZE, cursor });
+      const page = await api.listFiles({ q, subject, semester, type, mine, sort: sort === "newest" ? undefined : sort, limit: PAGE_SIZE, cursor });
       if (thisRequest !== requestSeq.current) return;
       setItems((current) => [...current, ...page.items]);
       setCursor(page.nextCursor);
@@ -74,18 +111,22 @@ export default function BrowseView({ api, limits, mine = false }) {
 
   return (
     <>
-      {!mine && (
-        <figure className="banner">
-          <img src="/library.webp" alt="Reading floors of a campus library" />
-        </figure>
-      )}
       <div className="page-head split">
         <div>
           <h1>{mine ? "My uploads" : "Library"}</h1>
-          <p className="muted">{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students. Newest first."}</p>
+          <p className="muted">{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students."}</p>
+          {summary && (
+            <p className="figures">
+              <span><strong>{summary.files}</strong> files</span>
+              <span><strong>{summary.subjects}</strong> subjects</span>
+              <span><strong>{summary.downloads}</strong> downloads</span>
+            </p>
+          )}
         </div>
         <a className="button primary" href="#/upload"><Icon name="upload" size={17} /> Upload</a>
       </div>
+
+      <section className="catalogue">
 
       <form className="filters" role="search" onSubmit={(event) => event.preventDefault()}>
         <label className="field grow searchbox">
@@ -117,6 +158,28 @@ export default function BrowseView({ api, limits, mine = false }) {
       <p id="subject-hint" className="hint" aria-live="polite">
         {!subjectReady && "Type the full subject code, like UCS531."}
       </p>
+
+      <div className="toolbar">
+        {summary?.topSubjects?.length > 0 && (
+          <div className="shortcuts" role="group" aria-label="Popular subjects">
+            {summary.topSubjects.map(({ code, files }) => (
+              <button key={code} type="button" className={`shortcut${filters.subject === code ? " on" : ""}`}
+                onClick={() => setFilters((current) => ({ ...current, subject: current.subject === code ? "" : code }))}>
+                {code} <span>{files}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="toolbar-end">
+          <label className="sort">
+            <span>Sort</span>
+            <select value={sort} onChange={(event) => setSort(event.target.value)}>
+              {SORTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          {hasFilters && <button type="button" className="button quiet" onClick={copyLink}>{copied ? "Link copied" : "Copy search link"}</button>}
+        </div>
+      </div>
 
       {error && <p className="notice error" role="alert">{error}</p>}
 
@@ -151,6 +214,7 @@ export default function BrowseView({ api, limits, mine = false }) {
           <button className="button" onClick={loadMore} disabled={state === "more"}>{state === "more" ? "Loading…" : "Load more"}</button>
         </p>
       )}
+      </section>
     </>
   );
 }
