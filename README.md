@@ -19,6 +19,7 @@ file storage are all managed cloud services, on free tiers.
 |---|---|
 | Accounts | Sign up and sign in with a campus e-mail only, confirm by e-mail, reset a forgotten password |
 | Upload | Drag and drop a PDF, Word or PowerPoint file (up to 25 MB), with title, subject code, semester, type, tags and description |
+| Auto-fill | A PDF is read by the analyser on Azure App Service, which fills in page count, subject code and suggested tags |
 | Library | Search title, tags, file name and uploader; filter by subject, semester and type; sort by newest, most downloaded or title |
 | Shortcuts | One-click popular-subject filters and live totals (files, subjects, downloads) |
 | Sharing | Every search lives in the address (`#/library?subject=UCS531`), so a link opens the same results |
@@ -31,14 +32,14 @@ file storage are all managed cloud services, on free tiers.
 
 ## Architecture
 
-The live version has no server of its own. Google Cloud (Firebase Hosting) serves the React app, with Vercel as a mirror; the
+The app runs across three clouds. Google Cloud (Firebase Hosting) serves the React app, with Vercel as a mirror; Azure App Service runs the PDF analyser; the
 browser then talks to Supabase directly, and Supabase checks every request
 against the user's token and the database's Row Level Security rules.
 
 ```mermaid
 flowchart LR
     U[Student browser<br/>React + Tailwind<br/>supabase-js]
-    V[Vercel<br/>static build, global CDN, HTTPS]
+    V[Firebase Hosting / Vercel<br/>static build, global CDN, HTTPS]
     G[Gmail SMTP<br/>confirm and reset e-mails]
     subgraph S["Supabase, AWS ap-south-1 (Mumbai)"]
         A[Auth<br/>@thapar.edu only, JWT]
@@ -46,7 +47,10 @@ flowchart LR
         ST[(Storage<br/>private bucket 'resources')]
         R[Realtime<br/>changes to files]
     end
+    AZ[Azure App Service<br/>PDF analyser]
     U -- "1. load app" --> V
+    U -- "PDF + JWT" --> AZ
+    AZ -. "verify session" .-> A
     U -- "2. sign in" --> A
     A -- "e-mails" --> G
     U -- "3. queries + JWT" --> P
@@ -83,7 +87,7 @@ otherwise `/config.json` (local or AWS mode). See
 | Cloud databases | Managed PostgreSQL (DynamoDB in the AWS design) |
 | Identity and access management | Domain-restricted sign-up, JWT sessions, Row Level Security, least-privilege SQL functions |
 | Content delivery | Google's Firebase Hosting CDN and Vercel's edge network (CloudFront in the AWS design) |
-| Containers | The PDF analyser is a Cloud Run service built from source by Cloud Build, scaling to zero |
+| Multi-cloud | Google (hosting), Microsoft Azure (PDF analysis on App Service), Supabase on AWS (auth, database, storage) |
 | Event-driven design | Database triggers write the activity log; Realtime pushes table changes to browsers |
 | Elasticity and pay-per-use | Free tiers that scale with traffic and cost nothing when idle |
 | Multi-tenancy | One database and bucket for all students, separated by per-user policies |
@@ -186,8 +190,8 @@ Gateway, Cognito, DynamoDB, S3, CloudFront, CloudWatch, AWS SAM.
 | `loadtest/loadtest.py` | Load test script |
 | `scripts/deploy.sh` | One-command AWS deploy |
 | `docs/LIVE_DEPLOYMENT.md` | The live Vercel + Supabase deployment |
-| `docs/GOOGLE_CLOUD.md` | Firebase Hosting and the Cloud Run PDF analyser |
-| `cloud-run/analyzer/` | Cloud Run service: reads a PDF, returns pages, words, subject code and tags |
+| `docs/GOOGLE_CLOUD.md` | Firebase Hosting and the PDF analyser (Azure App Service / Cloud Run) |
+| `cloud-run/analyzer/` | PDF analyser (Node): reads a PDF, returns pages, words, subject code and tags; runs on Azure App Service |
 | `docs/ARCHITECTURE.md` | The AWS design and its syllabus mapping |
 | `docs/DEPLOYMENT.md` | Deploy, operate and delete the AWS version |
 | `docs/SERVERLESS_VS_EC2.md` | Serverless vs an EC2-hosted version, with cost analysis |

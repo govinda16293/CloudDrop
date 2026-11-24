@@ -109,10 +109,10 @@ export default function UploadView({ api, limits }) {
           ) : (
             <p>Drop a file here, or</p>
           )}
-          {analysis?.state === "working" && <p className="analysis" role="status">Analysing on Google Cloud Run…</p>}
+          {analysis?.state === "working" && <p className="analysis" role="status">Analysing on Azure…</p>}
           {analysis?.state === "done" && (
             <p className="analysis" role="status">
-              Analysed on Google Cloud Run: <strong>{analysis.pages} pages</strong>, about {analysis.words.toLocaleString()} words.
+              Analysed on Azure App Service: <strong>{analysis.pages} pages</strong>, about {analysis.words.toLocaleString()} words.
               {analysis.suggestedTags.length > 0 && " Suggested tags added below."}
             </p>
           )}

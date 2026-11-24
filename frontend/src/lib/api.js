@@ -241,7 +241,7 @@ export function createSupabaseApi(client, { analyzerUrl = "" } = {}) {
       const downloadCount = countError ? row.download_count || 0 : Number(counted);
       return { url: data.signedUrl, downloadCount };
     },
-    // The PDF analyser runs on Google Cloud Run (cloud-run/analyzer). It checks the
+    // The PDF analyser runs on Azure App Service (cloud-run/analyzer). It checks the
     // same Supabase session, reads the PDF and suggests details for the form.
     ...(analyzerUrl ? {
       async analyzeFile(file) {

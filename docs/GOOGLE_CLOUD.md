@@ -2,17 +2,33 @@
 
 Live: https://clouddrop-473512.web.app (project `clouddrop-473512`).
 
-Status: Firebase Hosting is deployed. The Cloud Run analyser is written and
-tested but not yet deployed, because Cloud Run needs an active billing account
-and Google declined billing setup for the college account (`OR_BACR2_59`).
-Until `VITE_ANALYZER_URL` is set, the Upload page works without it.
+Status: the app is deployed on Firebase Hosting. The PDF analyser is deployed on
+**Azure App Service** (free F1 plan, Central India) at
+https://clouddrop-analyzer-gp24.azurewebsites.net, because Google declined billing
+setup for the college account (`OR_BACR2_59`) and Cloud Run needs billing. The
+same code also deploys to Cloud Run with the command below once billing is active.
 
-Two Google Cloud services carry part of CloudDrop:
+## Deploy the analyser to Azure App Service (what runs today)
+
+```bash
+az group create --name clouddrop-rg --location centralindia
+az appservice plan create --name clouddrop-plan --resource-group clouddrop-rg --location centralindia --sku F1 --is-linux
+az webapp create --name clouddrop-analyzer-gp24 --resource-group clouddrop-rg --plan clouddrop-plan --runtime "NODE:22-lts"
+az webapp config appsettings set --name clouddrop-analyzer-gp24 --resource-group clouddrop-rg --settings SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... ALLOWED_ORIGINS=https://clouddrop-473512.web.app,https://clouddrop-five.vercel.app SCM_DO_BUILD_DURING_DEPLOYMENT=false
+az webapp config set --name clouddrop-analyzer-gp24 --resource-group clouddrop-rg --startup-file "node server.js"
+az webapp deploy --name clouddrop-analyzer-gp24 --resource-group clouddrop-rg --src-path analyzer.zip --type zip
+```
+
+Build `analyzer.zip` from `server.js`, `package.json`, `package-lock.json` and
+`node_modules` with forward-slash paths (Windows PowerShell 5.1's
+`Compress-Archive` writes backslashes, which the Linux host rejects).
+
+Cloud services that carry part of CloudDrop:
 
 | Service | What it does |
 |---|---|
 | Firebase Hosting (Google's CDN) | Serves the React app over HTTPS |
-| Cloud Run (`cloud-run/analyzer`) | Reads a PDF the student is about to upload and returns its page count, word count, a subject code found in the text and suggested tags; the Upload form fills itself in |
+| Azure App Service, or Google Cloud Run (`cloud-run/analyzer`) | Reads a PDF the student is about to upload and returns its page count, word count, a subject code found in the text and suggested tags; the Upload form fills itself in |
 
 Supabase still provides sign-in, the database and file storage. The analyser
 accepts only requests carrying a valid Supabase session for an `@thapar.edu`
@@ -28,7 +44,7 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 firebase login
 ```
 
-## Deploy the analyser to Cloud Run
+## Deploy the analyser to Google Cloud Run (needs billing)
 
 From `cloud-run/analyzer` (Cloud Build turns the source into a container; no Docker needed):
 
