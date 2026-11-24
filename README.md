@@ -207,6 +207,5 @@ Gateway, Cognito, DynamoDB, S3, CloudFront, CloudWatch, AWS SAM.
 |---|---|
 | Ashish Bajaj | 1024030096 |
 | Govind | 1024030968 |
-| Pushp Batheja | _add_ |
 
 Lab group: _add_ · Advisor: Anil Singh

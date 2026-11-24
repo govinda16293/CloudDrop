@@ -5,7 +5,7 @@ Complete each unchecked item before final submission.
 
 ## Verified locally
 
-- [x] Three-member team recorded in the project proposal.
+- [x] Team recorded: Ashish Bajaj (1024030096) and Govind (1024030968).
 - [x] CloudDrop title explicitly maps to UCS531 topics: service models, serverless computing, object storage, NoSQL, IAM, CDN, monitoring, and elasticity.
 - [x] Project proposal includes a problem statement, objectives, AWS design, implementation plan, and architecture diagram.
 - [x] Working application supports sign-in, upload, search, download, deletion, and an admin dashboard in local mode.
