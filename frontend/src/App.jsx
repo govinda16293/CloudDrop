@@ -129,7 +129,7 @@ export default function App() {
       </main>
     );
   }
-  if (session.state === "signedOut") {
+  if (session.state === "signedOut" || (boot.auth.recovering && session.state === "ready")) {
     return <AuthView auth={boot.auth} notice={session.notice} onSignedIn={refreshSession} logo={<Logo />} />;
   }
 

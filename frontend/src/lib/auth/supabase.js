@@ -15,8 +15,13 @@ export function createSupabaseAuth(config) {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
 
+  // The reset e-mail links back to /?reset=1. Supabase signs the visitor in from
+  // the link; the app must then ask for a new password instead of opening the library.
+  const recovering = new URLSearchParams(window.location.search).has("reset");
+
   return {
     mode: "supabase",
+    recovering,
     emailDomain: config.emailDomain,
     client,
     async getToken() {
@@ -41,12 +46,14 @@ export function createSupabaseAuth(config) {
     },
     async forgotPassword({ email }) {
       validateCampusEmail(email, config.emailDomain);
-      const { error } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+      const { error } = await client.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/?reset=1` });
       if (error) throw new Error(message(error, "Could not send a reset link."));
     },
     async updatePassword({ password }) {
       const { error } = await client.auth.updateUser({ password });
       if (error) throw new Error(message(error, "Could not update the password."));
+      this.recovering = false;
+      window.history.replaceState(null, "", "/");
     },
     async signOut() {
       const { error } = await client.auth.signOut();

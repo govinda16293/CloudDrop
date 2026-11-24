@@ -189,7 +189,7 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
 }
 
 function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
-  const [step, setStep] = useState("signIn"); // signIn | signUp | forgot | reset
+  const [step, setStep] = useState(auth.recovering ? "reset" : "signIn"); // signIn | signUp | forgot | reset
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
