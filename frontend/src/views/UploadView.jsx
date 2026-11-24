@@ -35,7 +35,7 @@ export default function UploadView({ api, limits }) {
         ...current,
         subjectCode: current.subjectCode || result.subjectCode || "",
         tags: current.tags || result.suggestedTags.slice(0, limits.maxTags).join(", "),
-        description: current.description || `${result.pages}-page PDF, about ${result.words.toLocaleString()} words.`,
+        description: current.description || (result.words ? `${result.pages}-page PDF, about ${result.words.toLocaleString()} words.` : `${result.pages}-page PDF.`),
       }));
     } catch (failure) {
       setAnalysis({ state: "error", message: failure.message });
@@ -112,7 +112,7 @@ export default function UploadView({ api, limits }) {
           {analysis?.state === "working" && <p className="analysis" role="status">Analysing on Azure…</p>}
           {analysis?.state === "done" && (
             <p className="analysis" role="status">
-              Analysed on Azure App Service: <strong>{analysis.pages} pages</strong>, about {analysis.words.toLocaleString()} words.
+              Analysed on Azure App Service: <strong>{analysis.pages} {analysis.pages === 1 ? "page" : "pages"}</strong>{analysis.words ? `, about ${analysis.words.toLocaleString()} words` : ""}.
               {analysis.suggestedTags.length > 0 && " Suggested tags added below."}
             </p>
           )}

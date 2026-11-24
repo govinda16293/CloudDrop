@@ -75,8 +75,19 @@ function suggestTags(text, limit = 6) {
   return chosen;
 }
 
+// A PDF the parser cannot open (a tiny or hand-made file) still lists its pages
+// as "/Type /Page" objects, so count those instead of failing.
+function countPages(buffer) {
+  return (buffer.toString("latin1").match(/\/Type\s*\/Page(?!s)/g) || []).length;
+}
+
 async function analyse(buffer) {
-  const result = await pdf(buffer);
+  let result;
+  try {
+    result = await pdf(buffer);
+  } catch {
+    return { pages: Math.max(1, countPages(buffer)), words: 0, suggestedTags: [], subjectCode: null, partial: true };
+  }
   const text = result.text || "";
   const words = text.split(/\s+/).filter(Boolean).length;
   const subject = (text.match(/\b[A-Z]{3}\d{3}\b/) || [null])[0];

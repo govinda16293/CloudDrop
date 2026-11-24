@@ -33,3 +33,11 @@ test("HTTP: the root describes the service", async (t) => {
   const body = await (await fetch(`http://127.0.0.1:${server.address().port}/`)).json();
   assert.equal(body.service, "CloudDrop PDF analyser");
 });
+
+test("a PDF the parser cannot open still reports its pages", async () => {
+  const { analyse } = require("./server.js");
+  const broken = Buffer.from("%PDF-1.4\n1 0 obj << /Type /Pages /Kids [2 0 R] >> endobj\n2 0 obj << /Type /Page >> endobj\n%%EOF");
+  const result = await analyse(broken);
+  assert.equal(result.pages, 1);
+  assert.equal(result.partial, true);
+});
