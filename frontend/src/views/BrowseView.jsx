@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import FileCard from "../components/FileCard.jsx";
+import Icon from "../components/Icon.jsx";
 import { SEMESTERS, isSubjectCode, typeLabel } from "../lib/format.js";
 
 const EMPTY = { q: "", subject: "", semester: "", type: "" };
@@ -73,31 +74,35 @@ export default function BrowseView({ api, limits, mine = false }) {
 
   return (
     <>
-      <div className="page-head">
-        <h1>{mine ? "My uploads" : "Library"}</h1>
-        <p className="muted">{mine ? "Everything you have shared." : "Everything your campus has shared, newest first."}</p>
-      </div>
+      <section className="hero">
+        <div className="hero-text">
+          <h1>{mine ? <>Your <span className="grad">uploads.</span></> : <>Your campus library, <span className="grad">connected.</span></>}</h1>
+          <p>{mine ? "Everything you have shared with campus." : "Find and share notes, lab manuals and question papers, all in one place."}</p>
+        </div>
+        <a className="button primary" href="#/upload"><Icon name="upload" /> Upload resource</a>
+      </section>
 
       <form className="filters" role="search" onSubmit={(event) => event.preventDefault()}>
-        <label className="field grow">
-          <span>Search</span>
-          <input type="search" value={filters.q} onChange={set("q")} maxLength={60} placeholder="Title, tag, file name or uploader" />
+        <label className="field grow searchbox">
+          <span className="visually-hidden">Search</span>
+          <Icon name="search" />
+          <input type="search" value={filters.q} onChange={set("q")} maxLength={60} placeholder="Search notes, subject code, tags or uploader…" />
         </label>
-        <label className="field">
-          <span>Subject code</span>
-          <input type="text" className="mono" value={filters.subject} onChange={set("subject")} maxLength={7} placeholder="UCS531" aria-describedby="subject-hint" />
+        <label className="field pill">
+          <span className="visually-hidden">Subject code</span>
+          <input type="text" className="mono" value={filters.subject} onChange={set("subject")} maxLength={7} placeholder="Subject e.g. UCS531" aria-describedby="subject-hint" />
         </label>
-        <label className="field">
-          <span>Semester</span>
+        <label className="field pill">
+          <span className="visually-hidden">Semester</span>
           <select value={filters.semester} onChange={set("semester")}>
-            <option value="">Any</option>
-            {SEMESTERS.map((n) => <option key={n} value={n}>{n}</option>)}
+            <option value="">Any semester</option>
+            {SEMESTERS.map((n) => <option key={n} value={n}>Semester {n}</option>)}
           </select>
         </label>
-        <label className="field">
-          <span>Type</span>
+        <label className="field pill">
+          <span className="visually-hidden">Type</span>
           <select value={filters.type} onChange={set("type")}>
-            <option value="">Any</option>
+            <option value="">Any type</option>
             {limits.resourceTypes.map((type) => <option key={type} value={type}>{typeLabel(type)}</option>)}
           </select>
         </label>

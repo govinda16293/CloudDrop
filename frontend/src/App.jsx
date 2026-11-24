@@ -6,12 +6,13 @@ import AdminView from "./views/AdminView.jsx";
 import AuthView from "./views/AuthView.jsx";
 import BrowseView from "./views/BrowseView.jsx";
 import UploadView from "./views/UploadView.jsx";
+import Icon from "./components/Icon.jsx";
 
 const VIEWS = [
-  { id: "library", label: "Library" },
-  { id: "upload", label: "Upload" },
-  { id: "mine", label: "My uploads" },
-  { id: "admin", label: "Dashboard", adminOnly: true },
+  { id: "library", label: "Library", icon: "search" },
+  { id: "upload", label: "Upload", icon: "upload" },
+  { id: "mine", label: "My uploads", icon: "folder" },
+  { id: "admin", label: "Dashboard", icon: "chart", adminOnly: true },
 ];
 
 // Views live in the # part of the address. CloudFront then never sees a path
@@ -25,8 +26,13 @@ function Logo() {
   return (
     <span className="logo">
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <rect x="1" y="1" width="30" height="30" rx="6" />
-        <path d="M16 7v12m0 0-5-5m5 5 5-5M9 24h14" />
+        <defs>
+          <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#4f7cff" /><stop offset="1" stopColor="#8b5cf6" />
+          </linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="9" fill="url(#logo-g)" />
+        <path d="M16 8v11m0 0-4.5-4.5M16 19l4.5-4.5M10 24h12" />
       </svg>
       CloudDrop
     </span>
@@ -131,32 +137,43 @@ export default function App() {
   const visible = VIEWS.filter((item) => !item.adminOnly || user.isAdmin);
   const current = visible.some((item) => item.id === view) ? view : "library";
 
+  const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <>
-      <header className="topbar">
+    <div className="shell">
+      <aside className="sidebar">
         <a className="brand" href="#/library" aria-label="CloudDrop library"><Logo /></a>
         <nav aria-label="Main">
           {visible.map((item) => (
             <a key={item.id} href={`#/${item.id}`} className={item.id === current ? "active" : ""} aria-current={item.id === current ? "page" : undefined}>
-              {item.label}
+              <Icon name={item.icon} />
+              <span>{item.label}</span>
             </a>
           ))}
         </nav>
-        <div className="account">
-          <span className="who" title={user.email}>{user.name}</span>
-          {user.isAdmin && <span className="badge">admin</span>}
-          <button className="button quiet" onClick={signOut}>Sign out</button>
+        <div className="campus">
+          <strong>Thapar Institute of Engineering &amp; Technology</strong>
+          <span>UCS531 · Cloud Computing</span>
         </div>
-      </header>
-      {boot.auth.mode === "local" && (
-        <p className="localbar">Local mode: mock AWS on this computer. Files vanish when the server stops.</p>
-      )}
-      <main className="page">
-        {current === "library" && <BrowseView key="library" api={api} limits={limits} />}
-        {current === "mine" && <BrowseView key="mine" api={api} limits={limits} mine />}
-        {current === "upload" && <UploadView api={api} limits={limits} />}
-        {current === "admin" && <AdminView api={api} />}
-      </main>
-    </>
+        <div className="account">
+          <span className="avatar" aria-hidden="true">{initials}</span>
+          <span className="who" title={user.email}>
+            <strong>{user.name}</strong>
+            {user.isAdmin ? <span className="badge">admin</span> : <small>{user.email}</small>}
+          </span>
+          <button className="icon-button" onClick={signOut} aria-label="Sign out" title="Sign out"><Icon name="logout" /></button>
+        </div>
+      </aside>
+      <div className="main">
+        {boot.auth.mode === "local" && (
+          <p className="localbar">Local mode: mock AWS on this computer. Files vanish when the server stops.</p>
+        )}
+        <main className="page">
+          {current === "library" && <BrowseView key="library" api={api} limits={limits} />}
+          {current === "mine" && <BrowseView key="mine" api={api} limits={limits} mine />}
+          {current === "upload" && <UploadView api={api} limits={limits} />}
+          {current === "admin" && <AdminView api={api} />}
+        </main>
+      </div>
+    </div>
   );
 }
