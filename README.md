@@ -5,7 +5,7 @@ and question papers. UCS531 Cloud Computing project, Thapar Institute of
 Engineering and Technology.
 
 **Live:** https://clouddrop-five.vercel.app
-**Source:** _add GitHub URL here_
+**Source:** https://github.com/govinda16293/CloudDrop
 
 Students sign in with their `@thapar.edu` e-mail, upload a file once, tag it with
 its subject code, semester and type, and everyone on campus can find it next
@@ -205,8 +205,8 @@ Gateway, Cognito, DynamoDB, S3, CloudFront, CloudWatch, AWS SAM.
 
 | Name | Roll number |
 |---|---|
-| Ashish Bajaj | _add_ |
-| Govind | _add_ |
+| Ashish Bajaj | 1024030096 |
+| Govind | 1024030968 |
 | Pushp Batheja | _add_ |
 
 Lab group: _add_ · Advisor: Anil Singh
