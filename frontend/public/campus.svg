@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f7fc4"/>
+      <stop offset="0.55" stop-color="#8fbde6"/>
+      <stop offset="0.75" stop-color="#d9e8f2"/>
+    </linearGradient>
+    <linearGradient id="brick" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5473a"/>
+      <stop offset="1" stop-color="#7d3027"/>
+    </linearGradient>
+    <linearGradient id="track" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b95a46"/>
+      <stop offset="1" stop-color="#8e3b2d"/>
+    </linearGradient>
+    <pattern id="fins" width="14" height="10" patternUnits="userSpaceOnUse">
+      <rect width="14" height="10" fill="url(#brick)"/>
+      <rect x="10" width="4" height="10" fill="#6a271f" opacity="0.55"/>
+    </pattern>
+    <filter id="soft"><feGaussianBlur stdDeviation="1.2"/></filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <g fill="#fff" opacity="0.35" filter="url(#soft)">
+    <ellipse cx="520" cy="230" rx="160" ry="10"/>
+    <ellipse cx="900" cy="300" rx="120" ry="8"/>
+    <ellipse cx="1250" cy="190" rx="200" ry="12"/>
+  </g>
+  <!-- buildings -->
+  <rect x="380" y="500" width="300" height="200" fill="url(#fins)"/>
+  <rect x="620" y="400" width="520" height="300" fill="url(#fins)"/>
+  <rect x="600" y="400" width="560" height="14" fill="#8a3529"/>
+  <rect x="560" y="640" width="700" height="60" fill="#e9e4dc"/>
+  <rect x="560" y="690" width="700" height="10" fill="#bdb6aa"/>
+  <rect x="1180" y="560" width="260" height="140" fill="url(#fins)"/>
+  <!-- trees -->
+  <g fill="#3d6b2f">
+    <circle cx="120" cy="560" r="150"/><circle cx="300" cy="620" r="110"/>
+    <circle cx="460" cy="660" r="80"/><circle cx="1500" cy="560" r="160"/>
+    <circle cx="1330" cy="640" r="100"/><circle cx="900" cy="690" r="70"/>
+  </g>
+  <g fill="#5a8d3e" opacity="0.85">
+    <circle cx="160" cy="520" r="90"/><circle cx="1470" cy="520" r="100"/><circle cx="320" cy="590" r="60"/>
+  </g>
+  <g fill="#d989b0" opacity="0.7">
+    <circle cx="210" cy="470" r="10"/><circle cx="260" cy="520" r="8"/><circle cx="350" cy="560" r="9"/><circle cx="100" cy="500" r="7"/>
+  </g>
+  <rect x="0" y="700" width="1600" height="60" fill="#2f5a28"/>
+  <!-- fence -->
+  <g stroke="#1d1f1c" stroke-width="3" opacity="0.8">
+    <line x1="0" y1="700" x2="1600" y2="700"/>
+    <line x1="0" y1="760" x2="1600" y2="760"/>
+  </g>
+  <g stroke="#1d1f1c" stroke-width="2" opacity="0.55">
+    <path d="M0 700v60M80 700v60M160 700v60M240 700v60M320 700v60M400 700v60M480 700v60M560 700v60M640 700v60M720 700v60M800 700v60M880 700v60M960 700v60M1040 700v60M1120 700v60M1200 700v60M1280 700v60M1360 700v60M1440 700v60M1520 700v60M1600 700v60"/>
+  </g>
+  <rect x="0" y="760" width="1600" height="24" fill="#c9c2b6"/>
+  <!-- running track -->
+  <rect x="0" y="784" width="1600" height="216" fill="url(#track)"/>
+  <g stroke="#f3eee6" stroke-width="4" opacity="0.75" fill="none">
+    <path d="M0 860 C 500 820, 1100 830, 1600 880"/>
+    <path d="M0 950 C 500 900, 1100 910, 1600 970"/>
+  </g>
+  <g fill="#3a1812" opacity="0.18">
+    <path d="M0 800 L600 1000 H0Z"/><path d="M900 784 L1400 1000 H1200 L800 784Z"/>
+  </g>
+</svg>

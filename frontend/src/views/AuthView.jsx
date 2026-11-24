@@ -1,14 +1,38 @@
 import { useState } from "react";
+import Icon from "../components/Icon.jsx";
 
-function Field({ label, hint, ...input }) {
+const ICONS = { email: "mail", password: "lock", text: "user" };
+
+function Field({ label, hint, type, ...input }) {
+  const [shown, setShown] = useState(false);
+  const secret = type === "password";
   return (
     <label className="field">
-      <span>{label}</span>
-      <input {...input} />
+      <span className="visually-hidden">{label}</span>
+      <span className="input-wrap">
+        <Icon name={ICONS[type] || "user"} size={19} />
+        <input {...input} type={secret && shown ? "text" : type} placeholder={input.placeholder || label} />
+        {secret && (
+          <button type="button" className="reveal" onClick={() => setShown(!shown)} aria-label={shown ? "Hide password" : "Show password"}>
+            <Icon name={shown ? "eye" : "eyeOff"} size={19} />
+          </button>
+        )}
+      </span>
       {hint && <small>{hint}</small>}
     </label>
   );
 }
+
+function FormHead({ title, sub }) {
+  return (
+    <div className="form-head">
+      <h2>{title}</h2>
+      <p>{sub}</p>
+    </div>
+  );
+}
+
+const Arrow = () => <Icon name="arrow" size={18} />;
 
 function LocalSignIn({ auth, onSignedIn, run, busy }) {
   const [email, setEmail] = useState("");
@@ -24,6 +48,7 @@ function LocalSignIn({ auth, onSignedIn, run, busy }) {
         });
       }}
     >
+      <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
       <p className="notice">Local mode has no passwords. Enter any @{auth.emailDomain} address to try the app.</p>
       <Field label="College e-mail" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`you@${auth.emailDomain}`} />
       <Field label="Your name" type="text" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
@@ -31,7 +56,7 @@ function LocalSignIn({ auth, onSignedIn, run, busy }) {
         <input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} />
         Sign in as an admin
       </label>
-      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
     </form>
   );
 }
@@ -81,6 +106,7 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
         }
         goToStep("confirm", "We sent a code to your e-mail. Enter it to finish.");
       })}>
+        <FormHead title="Create your account" sub="Use your college e-mail" />
         <Field label="Your name" type="text" required maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
         {emailField}
         {passwordField("Password", "new-password")}
@@ -149,6 +175,7 @@ function CognitoForms({ auth, onSignedIn, run, busy, setMessage }) {
       }
       await onSignedIn();
     })}>
+      <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
       {emailField}
       {passwordField("Password", "current-password")}
       <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
@@ -180,6 +207,7 @@ function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
       if (signedIn) return onSignedIn();
       go("signIn", "Check your college inbox to confirm your e-mail, then sign in.");
     })}>
+      <FormHead title="Create your account" sub="Use your @thapar.edu e-mail" />
       <Field label="Your name" type="text" required maxLength={60} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
       {emailField}{passwordField("Password", "new-password")}
       <button className="button primary wide" disabled={busy}>{busy ? "Creating…" : "Create account"}</button>
@@ -191,6 +219,7 @@ function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
       await auth.forgotPassword({ email });
       go("signIn", "A password reset link has been sent to your college e-mail.");
     })}>
+      <FormHead title="Reset password" sub="We will e-mail you a reset link" />
       {emailField}
       <button className="button primary wide" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
       <p className="switch"><button type="button" className="link" onClick={() => go("signIn")}>Back to sign in</button></p>
@@ -198,15 +227,18 @@ function SupabaseForms({ auth, onSignedIn, run, busy, setMessage }) {
   );
   if (step === "reset") return (
     <form onSubmit={submit(async () => { await auth.updatePassword({ password }); await onSignedIn(); })}>
+      <FormHead title="Choose a new password" sub="At least 8 characters" />
       {passwordField("New password", "new-password")}
       <button className="button primary wide" disabled={busy}>{busy ? "Saving…" : "Set new password"}</button>
     </form>
   );
   return (
     <form onSubmit={submit(async () => { await auth.signIn({ email, password }); await onSignedIn(); })}>
+      <FormHead title="Welcome back" sub="Sign in to continue to CloudDrop" />
       {emailField}{passwordField("Password", "current-password")}
-      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-      <p className="switch">New here? <button type="button" className="link" onClick={() => go("signUp")}>Create an account</button>{" · "}<button type="button" className="link" onClick={() => go("forgot")}>Forgot password</button></p>
+      <p className="forgot"><button type="button" className="link" onClick={() => go("forgot")}>Forgot password?</button></p>
+      <button className="button primary wide" disabled={busy}>{busy ? "Signing in…" : <>Sign in <Arrow /></>}</button>
+      <p className="switch">Don't have an account? <button type="button" className="link" onClick={() => go("signUp")}>Create one</button></p>
     </form>
   );
 }
@@ -229,15 +261,13 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
 
   return (
     <main className="auth">
-      <section className="auth-intro">
+      <header className="auth-top">
         {logo}
-        <h1>Notes that don't get <mark>lost in the group chat.</mark></h1>
-        <p>Upload a note, lab manual or question paper once. Tag it with the subject code. Everyone on campus can find it next semester too.</p>
-        <ul className="stamps" aria-label="Highlights">
-          <li>@{auth.emailDomain} only</li>
-          <li>Private cloud storage</li>
-          <li>Search by subject code</li>
-        </ul>
+        <p className="auth-words" aria-hidden="true"><span>Share</span><span>Search</span><span>Learn</span></p>
+      </header>
+      <section className="auth-intro">
+        <h1>Notes<br />that outlast<br />the semester.</h1>
+        <p className="kicker">Thapar's shared library<br />for notes, labs and papers</p>
       </section>
       <section className="auth-card" aria-label="Sign in">
         {message && <p className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>}
@@ -249,6 +279,11 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
           <CognitoForms auth={auth} onSignedIn={onSignedIn} run={run} busy={busy} setMessage={setMessage} />
         )}
       </section>
+      <ul className="auth-features">
+        <li><Icon name="users" size={26} /><span><strong>Campus only</strong>@{auth.emailDomain} accounts</span></li>
+        <li><Icon name="lock" size={26} /><span><strong>Private storage</strong>Signed, short-lived links</span></li>
+        <li><Icon name="search" size={26} /><span><strong>Find fast</strong>Search by subject code</span></li>
+      </ul>
     </main>
   );
 }
