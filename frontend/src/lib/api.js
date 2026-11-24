@@ -132,7 +132,7 @@ function toFile(row, userId) {
   };
 }
 
-export function createSupabaseApi(client) {
+export function createSupabaseApi(client, { analyzerUrl = "" } = {}) {
   let pending = new Map();
   let featuresProbe = null;
 
@@ -241,6 +241,29 @@ export function createSupabaseApi(client) {
       const downloadCount = countError ? row.download_count || 0 : Number(counted);
       return { url: data.signedUrl, downloadCount };
     },
+    // The PDF analyser runs on Google Cloud Run (cloud-run/analyzer). It checks the
+    // same Supabase session, reads the PDF and suggests details for the form.
+    ...(analyzerUrl ? {
+      async analyzeFile(file) {
+        const { data } = await client.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw signedOut();
+        let response;
+        try {
+          response = await fetch(`${analyzerUrl.replace(/\/$/, "")}/analyze`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${token}`, "content-type": "application/pdf" },
+            body: file,
+          });
+        } catch {
+          throw new ApiError(0, "network", "The analyser could not be reached.");
+        }
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new ApiError(response.status, "analyze_failed", body.error || "Could not analyse this file.");
+        return body;
+      },
+    } : {}),
+
     // Saved files, reports and the activity log need supabase/features.sql.
     // Ask once whether its tables exist, so the app can hide what is not set up yet.
     hasFeatures() {

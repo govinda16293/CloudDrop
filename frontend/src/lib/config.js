@@ -17,7 +17,7 @@ export function parseConfig(raw) {
     if (!raw.supabaseUrl || !raw.supabasePublishableKey) {
       throw new Error("config.json needs supabaseUrl and supabasePublishableKey when authMode is supabase.");
     }
-    return { ...config, supabaseUrl: raw.supabaseUrl, supabasePublishableKey: raw.supabasePublishableKey };
+    return { ...config, supabaseUrl: raw.supabaseUrl, supabasePublishableKey: raw.supabasePublishableKey, analyzerUrl: raw.analyzerUrl || "" };
   }
   throw new Error('config.json: authMode must be "local", "cognito", or "supabase".');
 }
@@ -31,6 +31,7 @@ export async function loadConfig(fetchImpl = (...args) => fetch(...args)) {
       supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
       supabasePublishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       emailDomain: "thapar.edu",
+      analyzerUrl: import.meta.env.VITE_ANALYZER_URL || "",
     });
   }
   const response = await fetchImpl("/config.json", { cache: "no-store" });

@@ -66,7 +66,7 @@ export default function App() {
 
   const api = useMemo(() => {
     if (!boot) return null;
-    if (boot.config.authMode === "supabase") return createSupabaseApi(boot.auth.client);
+    if (boot.config.authMode === "supabase") return createSupabaseApi(boot.auth.client, { analyzerUrl: boot.config.analyzerUrl });
     return createApi({
       apiBase: boot.config.apiBase,
       getToken: () => boot.auth.getToken(),

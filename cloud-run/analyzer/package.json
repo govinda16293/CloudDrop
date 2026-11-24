@@ -1,0 +1,19 @@
+{
+  "name": "clouddrop-analyzer",
+  "version": "1.0.0",
+  "description": "CloudDrop PDF analyser for Google Cloud Run",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}

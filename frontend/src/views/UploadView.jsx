@@ -12,13 +12,34 @@ export default function UploadView({ api, limits }) {
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [shared, setShared] = useState(null);
+  const [analysis, setAnalysis] = useState(null); // { state: "working" | "done" | "error", ... }
 
   const set = (name) => (event) => setForm((current) => ({ ...current, [name]: event.target.value }));
 
   function choose(chosen) {
-    setError(checkFile(chosen, limits));
+    const problem = checkFile(chosen, limits);
+    setError(problem);
     setFile(chosen || null);
+    setAnalysis(null);
     if (chosen && !form.title) setForm((current) => ({ ...current, title: titleFromFileName(chosen.name).slice(0, 120) }));
+    if (chosen && !problem && api.analyzeFile && /\.pdf$/i.test(chosen.name)) analyse(chosen);
+  }
+
+  // Ask the Cloud Run analyser for page count, subject code and tags; fill only empty fields.
+  async function analyse(chosen) {
+    setAnalysis({ state: "working" });
+    try {
+      const result = await api.analyzeFile(chosen);
+      setAnalysis({ state: "done", ...result });
+      setForm((current) => ({
+        ...current,
+        subjectCode: current.subjectCode || result.subjectCode || "",
+        tags: current.tags || result.suggestedTags.slice(0, limits.maxTags).join(", "),
+        description: current.description || `${result.pages}-page PDF, about ${result.words.toLocaleString()} words.`,
+      }));
+    } catch (failure) {
+      setAnalysis({ state: "error", message: failure.message });
+    }
   }
 
   async function submit(event) {
@@ -60,7 +81,7 @@ export default function UploadView({ api, limits }) {
         <p><strong>{shared.title}</strong> is now in the library under <span className="code">{shared.subjectCode}</span>.</p>
         <p className="row">
           <a className="button primary" href="#/library">Open the library</a>
-          <button className="button" onClick={() => { setFile(null); setForm(BLANK); setShared(null); setStage("form"); }}>Upload another</button>
+          <button className="button" onClick={() => { setFile(null); setForm(BLANK); setShared(null); setAnalysis(null); setStage("form"); }}>Upload another</button>
         </p>
       </div>
     );
@@ -88,6 +109,14 @@ export default function UploadView({ api, limits }) {
           ) : (
             <p>Drop a file here, or</p>
           )}
+          {analysis?.state === "working" && <p className="analysis" role="status">Analysing on Google Cloud Run…</p>}
+          {analysis?.state === "done" && (
+            <p className="analysis" role="status">
+              Analysed on Google Cloud Run: <strong>{analysis.pages} pages</strong>, about {analysis.words.toLocaleString()} words.
+              {analysis.suggestedTags.length > 0 && " Suggested tags added below."}
+            </p>
+          )}
+          {analysis?.state === "error" && <p className="analysis muted" role="status">Automatic details unavailable: {analysis.message}</p>}
           <label htmlFor="file" className="button">{file ? "Choose a different file" : "Choose a file"}</label>
         </div>
 

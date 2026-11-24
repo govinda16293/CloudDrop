@@ -100,3 +100,29 @@ describe("Supabase API: downloads, activity and live updates", () => {
     expect(client.removeChannel).toHaveBeenCalled();
   });
 });
+
+describe("Supabase API: Cloud Run analyser", () => {
+  it("is offered only when an analyser URL is configured", () => {
+    expect(createSupabaseApi(fakeClient()).analyzeFile).toBeUndefined();
+    expect(typeof createSupabaseApi(fakeClient(), { analyzerUrl: "https://run.example" }).analyzeFile).toBe("function");
+  });
+
+  it("posts the PDF with the session token and returns the analysis", async () => {
+    const client = fakeClient();
+    client.auth.getSession = async () => ({ data: { session: { access_token: "tok" } } });
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ pages: 3, words: 900, suggestedTags: ["cloud"], subjectCode: "UCS531" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await createSupabaseApi(client, { analyzerUrl: "https://run.example/" }).analyzeFile("pdf-bytes");
+    expect(fetchMock).toHaveBeenCalledWith("https://run.example/analyze", expect.objectContaining({ method: "POST", body: "pdf-bytes", headers: expect.objectContaining({ authorization: "Bearer tok" }) }));
+    expect(result.pages).toBe(3);
+    vi.unstubAllGlobals();
+  });
+
+  it("passes on the analyser's error message", async () => {
+    const client = fakeClient();
+    client.auth.getSession = async () => ({ data: { session: { access_token: "tok" } } });
+    vi.stubGlobal("fetch", async () => ({ ok: false, status: 415, json: async () => ({ error: "Only PDF files can be analysed." }) }));
+    await expect(createSupabaseApi(client, { analyzerUrl: "https://run.example" }).analyzeFile("x")).rejects.toThrow("Only PDF");
+    vi.unstubAllGlobals();
+  });
+});
