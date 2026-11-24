@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatBytes, formatDate, typeLabel } from "../lib/format.js";
-import Icon from "../components/Icon.jsx";
 
-function Tile({ label, value, note, icon }) {
+function Tile({ label, value, note }) {
   return (
     <div className="tile">
-      {icon && <span className="tile-icon"><Icon name={icon} size={22} /></span>}
       <span className="tile-label">{label}</span>
       <strong>{value}</strong>
       {note && <small>{note}</small>}
@@ -93,10 +91,10 @@ export default function AdminView({ api }) {
       </div>
 
       <div className="tiles">
-        <Tile label="Files" icon="file" value={totals.files} />
-        <Tile label="Storage used" icon="database" value={formatBytes(totals.bytes)} />
-        <Tile label="Downloads" icon="download" value={totals.downloads} />
-        <Tile label="Contributors" icon="users" value={totals.uploaders} />
+        <Tile label="Files" value={totals.files} />
+        <Tile label="Storage used" value={formatBytes(totals.bytes)} />
+        <Tile label="Downloads" value={totals.downloads} />
+        <Tile label="Contributors" value={totals.uploaders} />
       </div>
 
       <section className="panel">

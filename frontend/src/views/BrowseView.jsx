@@ -76,8 +76,8 @@ export default function BrowseView({ api, limits, mine = false }) {
     <>
       <section className="hero">
         <div className="hero-text">
-          <h1>{mine ? <>Your <span className="grad">uploads.</span></> : <>Your campus library, <span className="grad">connected.</span></>}</h1>
-          <p>{mine ? "Everything you have shared with campus." : "Find and share notes, lab manuals and question papers, all in one place."}</p>
+          <h1>{mine ? "My uploads" : "Library"}</h1>
+          <p>{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students. Newest first."}</p>
         </div>
         <a className="button primary" href="#/upload"><Icon name="upload" /> Upload resource</a>
       </section>

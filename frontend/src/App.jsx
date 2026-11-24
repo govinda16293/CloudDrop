@@ -150,10 +150,6 @@ export default function App() {
             </a>
           ))}
         </nav>
-        <div className="campus">
-          <strong>Thapar Institute of Engineering &amp; Technology</strong>
-          <span>UCS531 · Cloud Computing</span>
-        </div>
         <div className="account">
           <span className="avatar" aria-hidden="true">{initials}</span>
           <span className="who" title={user.email}>

@@ -62,8 +62,7 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
       <h3>{file.title}</h3>
       <div className="card-head">
         <span className="code">{file.subjectCode}</span>
-        <span className="chip">Sem {file.semester}</span>
-        <span className="chip type">{typeLabel(file.resourceType)}</span>
+        <span className="card-kind">{typeLabel(file.resourceType)} · Semester {file.semester}</span>
       </div>
       {file.description && <p className="desc">{file.description}</p>}
       {file.tags.length > 0 && (

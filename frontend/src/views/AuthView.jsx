@@ -295,21 +295,9 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
         )}
       </section>
 
-      <ul className="flex flex-wrap gap-y-4 lg:col-span-2">
-        {[
-          ["users", "Campus only", `@${auth.emailDomain} accounts`],
-          ["lock", "Private storage", "Signed, short-lived links"],
-          ["search", "Find fast", "Search by subject code"],
-        ].map(([icon, title, text], i) => (
-          <li key={title} className={`flex basis-full items-center gap-3.5 drop-shadow sm:basis-auto sm:px-8 ${i ? "sm:border-l sm:border-white/45" : "sm:pl-1"}`}>
-            <Icon name={icon} size={26} />
-            <span className="flex flex-col text-[13.5px] text-white/90">
-              <strong className="text-xs tracking-[0.2em] text-white uppercase">{title}</strong>
-              {text}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <p className="text-[13px] font-medium text-white/80 drop-shadow lg:col-span-2">
+        Only @{auth.emailDomain} accounts can sign in. Files are stored privately; download links expire after five minutes.
+      </p>
     </main>
   );
 }
