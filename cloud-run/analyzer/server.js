@@ -87,6 +87,14 @@ const server = http.createServer(async (req, res) => {
   const cors = corsHeaders(req.headers.origin);
   if (req.method === "OPTIONS") return send(res, 204, {}, cors);
   if (req.method === "GET" && req.url === "/healthz") return send(res, 200, { ok: true }, cors);
+  if (req.method === "GET" && req.url === "/") {
+    return send(res, 200, {
+      service: "CloudDrop PDF analyser",
+      purpose: "Reads a PDF before upload and returns its page count, word count, subject code and suggested tags.",
+      endpoints: { "GET /healthz": "health check", "POST /analyze": "PDF body + Supabase session token" },
+      app: "https://clouddrop-473512.web.app",
+    }, cors);
+  }
   if (req.method !== "POST" || req.url !== "/analyze") return send(res, 404, { error: "Not found." }, cors);
   try {
     if (!(await signedInUser(req.headers.authorization))) return send(res, 401, { error: "Sign in with your campus account." }, cors);

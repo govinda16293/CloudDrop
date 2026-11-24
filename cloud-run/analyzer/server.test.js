@@ -25,3 +25,11 @@ test("HTTP: health check, sign-in required, CORS for the app", async (t) => {
   const stranger = await fetch(`${base}/analyze`, { method: "OPTIONS", headers: { origin: "https://evil.example" } });
   assert.equal(stranger.headers.get("access-control-allow-origin"), null);
 });
+
+test("HTTP: the root describes the service", async (t) => {
+  const { server } = require("./server.js");
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+  const body = await (await fetch(`http://127.0.0.1:${server.address().port}/`)).json();
+  assert.equal(body.service, "CloudDrop PDF analyser");
+});
