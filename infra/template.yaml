@@ -1,0 +1,646 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CloudDrop - a serverless campus notes and resource sharing platform.
+  Browser -> CloudFront -> (S3 static site | API Gateway -> Lambda -> DynamoDB + S3),
+  with Cognito sign-in and CloudWatch monitoring. No virtual machine anywhere.
+
+# The stack name is used inside S3 bucket names, so it must be lower case
+# letters, digits and hyphens only (for example: clouddrop).
+
+Parameters:
+  AllowedEmailDomain:
+    Type: String
+    Default: thapar.edu
+    AllowedPattern: "^[a-z0-9.-]+\\.[a-z]{2,}$"
+    Description: Only e-mail addresses on this domain can sign up.
+  MaxFileSizeMb:
+    Type: Number
+    Default: 25
+    MinValue: 1
+    MaxValue: 100
+    Description: Largest file a student can upload, in megabytes.
+  MaxFilesPerUser:
+    Type: Number
+    Default: 200
+    MinValue: 1
+    Description: How many files one student can keep in the library.
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    MemorySize: 256
+    Timeout: 10
+    CodeUri: ../backend/src
+    Environment:
+      Variables:
+        STACK_NAME: !Ref AWS::StackName
+        ALLOWED_EMAIL_DOMAIN: !Ref AllowedEmailDomain
+
+Resources:
+  # ---------------------------------------------------------------- storage --
+
+  # The name is built from the stack name instead of being referenced with
+  # !Ref from the functions. That breaks a dependency loop:
+  # bucket CORS -> CloudFront -> API -> functions -> bucket.
+  FilesBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      CorsConfiguration:
+        CorsRules:
+          # Browsers upload straight to the bucket with a pre-signed POST.
+          # Downloads are plain navigations and need no CORS.
+          - AllowedMethods: [POST]
+            AllowedOrigins:
+              - !Sub "https://${Distribution.DomainName}"
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAbandonedUploads
+            Status: Enabled
+            Prefix: pending/
+            ExpirationInDays: 1
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+          - Id: TierAndTrimStoredFiles
+            Status: Enabled
+            Prefix: files/
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 90
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+          - Id: RemoveExpiredDeleteMarkers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
+
+  FilesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FilesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyPlainHttp
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt FilesBucket.Arn
+              - !Sub "${FilesBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  FilesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: fileId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: gsiAll
+          AttributeType: S
+        - AttributeName: gsiSubject
+          AttributeType: S
+        - AttributeName: gsiUploader
+          AttributeType: S
+      KeySchema:
+        - AttributeName: fileId
+          KeyType: HASH
+      # The three index keys are written only when an upload is confirmed, so
+      # unconfirmed (PENDING) items never appear in any listing.
+      GlobalSecondaryIndexes:
+        - IndexName: byRecent
+          KeySchema:
+            - AttributeName: gsiAll
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: bySubject
+          KeySchema:
+            - AttributeName: gsiSubject
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: byUploader
+          KeySchema:
+            - AttributeName: gsiUploader
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # ------------------------------------------------------------------- auth --
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      UserPoolName: !Sub "${AWS::StackName}-students"
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      # A changed e-mail only takes effect after the new address is proven.
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub "${AWS::StackName}-web"
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      IdTokenValidity: 60
+      AccessTokenValidity: 60
+      RefreshTokenValidity: 7
+      TokenValidityUnits:
+        IdToken: minutes
+        AccessToken: minutes
+        RefreshToken: days
+
+  AdminsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      UserPoolId: !Ref UserPool
+      GroupName: admins
+      Description: Users who can open the admin dashboard and delete any file.
+
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PreSignUpFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  # -------------------------------------------------------------------- api --
+
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-api"
+      StageName: prod
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingBurstLimit: 50
+          ThrottlingRateLimit: 25
+          MetricsEnabled: true
+      # Errors produced by API Gateway itself (for example a 401 from the
+      # authorizer) must not be cached by CloudFront and shown to another user.
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Cache-Control: "'no-store'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Cache-Control: "'no-store'"
+
+  FilesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-files"
+      Description: Upload, search, download and delete files.
+      Handler: clouddrop.handlers.files.handler
+      LoggingConfig:
+        LogGroup: !Ref FilesLogGroup
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FilesTable
+          BUCKET_NAME: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+          MAX_FILE_MB: !Ref MaxFileSizeMb
+          MAX_FILES_PER_USER: !Ref MaxFilesPerUser
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: FileMetadata
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource: !GetAtt FilesTable.Arn
+            - Sid: FileListing
+              Effect: Allow
+              Action: dynamodb:Query
+              Resource: !Sub "${FilesTable.Arn}/index/*"
+            - Sid: PendingUploads
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-files-${AWS::AccountId}/pending/*"
+            - Sid: StoredFiles
+              Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-files-${AWS::AccountId}/files/*"
+            # Without this, asking S3 about an object that does not exist
+            # answers 403 instead of 404, and "upload not finished yet" would
+            # look like a permissions failure. The code never lists the bucket.
+            - Sid: TellMissingFromForbidden
+              Effect: Allow
+              Action: s3:ListBucket
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}-files-${AWS::AccountId}"
+      Events:
+        Me:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/me
+            Method: GET
+        ListFiles:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files
+            Method: GET
+        CreateUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files
+            Method: POST
+        GetFile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files/{id}
+            Method: GET
+        DeleteFile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files/{id}
+            Method: DELETE
+        CompleteUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files/{id}/complete
+            Method: POST
+        DownloadFile:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/files/{id}/download
+            Method: GET
+
+  AdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-admin"
+      Description: Usage statistics for the admin dashboard.
+      Handler: clouddrop.handlers.admin.handler
+      MemorySize: 512
+      Timeout: 20
+      LoggingConfig:
+        LogGroup: !Ref AdminLogGroup
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref FilesTable
+          BUCKET_NAME: !Sub "${AWS::StackName}-files-${AWS::AccountId}"
+          MAX_FILE_MB: !Ref MaxFileSizeMb
+          API_NAME: !Sub "${AWS::StackName}-api"
+          API_STAGE: prod
+          METRIC_FUNCTIONS: !Sub "${AWS::StackName}-files,${AWS::StackName}-admin"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Sid: ReadActiveFiles
+              Effect: Allow
+              Action: dynamodb:Query
+              Resource: !Sub "${FilesTable.Arn}/index/byRecent"
+            - Sid: ReadPlatformMetrics
+              Effect: Allow
+              Action: cloudwatch:GetMetricData
+              Resource: "*"
+      Events:
+        Stats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /api/admin/stats
+            Method: GET
+
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-presignup"
+      Description: Cognito trigger that only lets institute e-mail addresses sign up.
+      Handler: clouddrop.handlers.presignup.handler
+      MemorySize: 128
+      Timeout: 5
+      LoggingConfig:
+        LogGroup: !Ref PreSignUpLogGroup
+
+  FilesLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-files"
+      RetentionInDays: 14
+
+  AdminLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-admin"
+      RetentionInDays: 14
+
+  PreSignUpLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-presignup"
+      RetentionInDays: 14
+
+  # ------------------------------------------------------------ static site --
+
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+          - Sid: DenyPlainHttp
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt SiteBucket.Arn
+              - !Sub "${SiteBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  SiteOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-site"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # One distribution serves both the site and the API, so the browser sees a
+  # single origin and the API needs no CORS. There is deliberately no
+  # "send 403/404 to index.html" rule: it would apply to /api/* as well and
+  # replace real API errors with the home page. The app uses # links instead.
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${AWS::StackName} site and API"
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_200
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt SiteOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+          - Id: api
+            DomainName: !Sub "${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}"
+            OriginPath: /prod
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods: [GET, HEAD]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # Managed-SecurityHeadersPolicy
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+            # Forwards the Authorization header to API Gateway but not Host,
+            # which API Gateway needs to be its own domain name.
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # Managed-AllViewerExceptHostHeader
+
+  # ------------------------------------------------------------- monitoring --
+
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-api-5xx"
+      AlarmDescription: The API returned 5 or more server errors within 5 minutes.
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub "${AWS::StackName}-api"
+        - Name: Stage
+          Value: prod
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-overview"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric", "x": 0, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "API requests and errors",
+                "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+                "metrics": [
+                  ["AWS/ApiGateway", "Count", "ApiName", "${AWS::StackName}-api", "Stage", "prod"],
+                  [".", "4XXError", ".", ".", ".", "."],
+                  [".", "5XXError", ".", ".", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 0, "width": 12, "height": 6,
+              "properties": {
+                "title": "API latency (ms)",
+                "region": "${AWS::Region}", "period": 300,
+                "metrics": [
+                  ["AWS/ApiGateway", "Latency", "ApiName", "${AWS::StackName}-api", "Stage", "prod", {"stat": "Average"}],
+                  ["...", {"stat": "p95"}]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 0, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Lambda invocations, errors and throttles",
+                "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${AWS::StackName}-files"],
+                  [".", "Errors", ".", "."],
+                  [".", "Throttles", ".", "."],
+                  [".", "ConcurrentExecutions", ".", ".", {"stat": "Maximum"}]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 12, "y": 6, "width": 12, "height": 6,
+              "properties": {
+                "title": "Uploads and downloads",
+                "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+                "metrics": [
+                  ["CloudDrop", "FilesUploaded", "Stack", "${AWS::StackName}"],
+                  [".", "FilesDownloaded", ".", "."],
+                  [".", "FilesDeleted", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "metric", "x": 0, "y": 12, "width": 12, "height": 6,
+              "properties": {
+                "title": "DynamoDB consumed capacity",
+                "region": "${AWS::Region}", "stat": "Sum", "period": 300,
+                "metrics": [
+                  ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${FilesTable}"],
+                  [".", "ConsumedWriteCapacityUnits", ".", "."]
+                ]
+              }
+            }
+          ]
+        }
+
+Outputs:
+  SiteUrl:
+    Description: Open this address to use CloudDrop.
+    Value: !Sub "https://${Distribution.DomainName}"
+  Region:
+    Value: !Ref AWS::Region
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+  SiteBucketName:
+    Value: !Ref SiteBucket
+  FilesBucketName:
+    Value: !Ref FilesBucket
+  DistributionId:
+    Value: !Ref Distribution
+  ApiUrl:
+    Description: Direct API Gateway address (the site uses /api on SiteUrl instead).
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod"
+  DashboardUrl:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-overview"

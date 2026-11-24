@@ -1,0 +1,1 @@
+# boto3 is already part of the AWS Lambda Python runtime, so nothing is installed here.

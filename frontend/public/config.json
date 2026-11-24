@@ -1,0 +1,5 @@
+{
+  "authMode": "local",
+  "apiBase": "/api",
+  "emailDomain": "thapar.edu"
+}

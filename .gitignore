@@ -1,0 +1,19 @@
+.venv/
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.aws-sam/
+.DS_Store
+samconfig.toml
+*.zip
+
+# Logs that local AI/dev tooling drops into the working folder
+planning/
+tmp/
+.slash-cli/
+.claude/
+
+.vercel
+.env*
