@@ -4,7 +4,8 @@ A cloud-hosted library where Thapar students share notes, lab manuals, slides
 and question papers. UCS531 Cloud Computing project, Thapar Institute of
 Engineering and Technology.
 
-**Live:** https://clouddrop-five.vercel.app
+**Live on Google Cloud (Firebase Hosting):** https://clouddrop-473512.web.app
+**Mirror on Vercel:** https://clouddrop-five.vercel.app
 **Source:** https://github.com/govinda16293/CloudDrop
 
 Students sign in with their `@thapar.edu` e-mail, upload a file once, tag it with
@@ -30,7 +31,7 @@ file storage are all managed cloud services, on free tiers.
 
 ## Architecture
 
-The live version has no server of its own. Vercel serves the React app; the
+The live version has no server of its own. Google Cloud (Firebase Hosting) serves the React app, with Vercel as a mirror; the
 browser then talks to Supabase directly, and Supabase checks every request
 against the user's token and the database's Row Level Security rules.
 
@@ -81,7 +82,8 @@ otherwise `/config.json` (local or AWS mode). See
 | Object storage | Files in a private storage bucket, moved directly between browser and storage |
 | Cloud databases | Managed PostgreSQL (DynamoDB in the AWS design) |
 | Identity and access management | Domain-restricted sign-up, JWT sessions, Row Level Security, least-privilege SQL functions |
-| Content delivery | Vercel's edge network (CloudFront in the AWS design) |
+| Content delivery | Google's Firebase Hosting CDN and Vercel's edge network (CloudFront in the AWS design) |
+| Containers | The PDF analyser is a Cloud Run service built from source by Cloud Build, scaling to zero |
 | Event-driven design | Database triggers write the activity log; Realtime pushes table changes to browsers |
 | Elasticity and pay-per-use | Free tiers that scale with traffic and cost nothing when idle |
 | Multi-tenancy | One database and bucket for all students, separated by per-user policies |
@@ -184,6 +186,8 @@ Gateway, Cognito, DynamoDB, S3, CloudFront, CloudWatch, AWS SAM.
 | `loadtest/loadtest.py` | Load test script |
 | `scripts/deploy.sh` | One-command AWS deploy |
 | `docs/LIVE_DEPLOYMENT.md` | The live Vercel + Supabase deployment |
+| `docs/GOOGLE_CLOUD.md` | Firebase Hosting and the Cloud Run PDF analyser |
+| `cloud-run/analyzer/` | Cloud Run service: reads a PDF, returns pages, words, subject code and tags |
 | `docs/ARCHITECTURE.md` | The AWS design and its syllabus mapping |
 | `docs/DEPLOYMENT.md` | Deploy, operate and delete the AWS version |
 | `docs/SERVERLESS_VS_EC2.md` | Serverless vs an EC2-hosted version, with cost analysis |

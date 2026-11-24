@@ -1,5 +1,12 @@
 # CloudDrop on Google Cloud
 
+Live: https://clouddrop-473512.web.app (project `clouddrop-473512`).
+
+Status: Firebase Hosting is deployed. The Cloud Run analyser is written and
+tested but not yet deployed, because Cloud Run needs an active billing account
+and Google declined billing setup for the college account (`OR_BACR2_59`).
+Until `VITE_ANALYZER_URL` is set, the Upload page works without it.
+
 Two Google Cloud services carry part of CloudDrop:
 
 | Service | What it does |
