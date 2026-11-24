@@ -1,7 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 
+// Supabase's own wording, rewritten where a student would not know what to do next.
+const FRIENDLY = [
+  [/email rate limit/i, "Too many e-mails were sent recently. Please try again in about an hour."],
+  [/rate limit|too many requests/i, "Too many attempts. Please wait a few minutes and try again."],
+  [/invalid login credentials/i, "Wrong e-mail or password."],
+  [/email not confirmed/i, "Confirm your e-mail first: open the link we sent to your college inbox."],
+  [/user already registered/i, "An account with this e-mail already exists. Sign in or reset your password."],
+  [/auth session missing/i, "This reset link has expired. Request a new one from Forgot password."],
+];
+
 function message(error, fallback = "Something went wrong. Please try again.") {
-  return error?.message || fallback;
+  const text = error?.message;
+  if (!text) return fallback;
+  const match = FRIENDLY.find(([pattern]) => pattern.test(text));
+  return match ? match[1] : text;
 }
 
 function validateCampusEmail(email, domain) {
