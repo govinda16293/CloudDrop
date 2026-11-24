@@ -231,8 +231,13 @@ export default function AuthView({ auth, notice, onSignedIn, logo }) {
     <main className="auth">
       <section className="auth-intro">
         {logo}
-        <h1>Notes that don't get lost in the group chat.</h1>
+        <h1>Notes that don't get <mark>lost in the group chat.</mark></h1>
         <p>Upload a note, lab manual or question paper once. Tag it with the subject code. Everyone on campus can find it next semester too.</p>
+        <ul className="stamps" aria-label="Highlights">
+          <li>@{auth.emailDomain} only</li>
+          <li>Private cloud storage</li>
+          <li>Search by subject code</li>
+        </ul>
       </section>
       <section className="auth-card" aria-label="Sign in">
         {message && <p className={`notice ${message.kind}`} role={message.kind === "error" ? "alert" : "status"}>{message.text}</p>}

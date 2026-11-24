@@ -42,7 +42,7 @@ export default function FileCard({ file, api, onDeleted, onTag }) {
   }
 
   return (
-    <li className="card">
+    <li className="card" data-type={file.resourceType}>
       <div className="card-head">
         <span className="code">{file.subjectCode}</span>
         <span>{typeLabel(file.resourceType)}</span>

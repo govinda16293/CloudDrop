@@ -25,7 +25,7 @@ function Logo() {
   return (
     <span className="logo">
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="7" />
+        <rect x="1" y="1" width="30" height="30" rx="6" />
         <path d="M16 7v12m0 0-5-5m5 5 5-5M9 24h14" />
       </svg>
       CloudDrop
