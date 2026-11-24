@@ -71,7 +71,7 @@ export default function UploadView({ api, limits }) {
   return (
     <>
       <div className="page-head">
-        <h1>Upload <span className="grad">resource</span></h1>
+        <h1>Upload a file</h1>
         <p className="muted">Up to {formatBytes(limits.maxFileBytes)}. Allowed: {limits.allowedExtensions.join(" ")}</p>
       </div>
       <form className="upload" onSubmit={submit}>
@@ -86,7 +86,7 @@ export default function UploadView({ api, limits }) {
           {file ? (
             <p><strong>{file.name}</strong> <span className="muted">{formatBytes(file.size)}</span></p>
           ) : (
-            <p><strong>Drag &amp; drop your file here</strong><br /><span className="muted">or</span></p>
+            <p>Drop a file here, or</p>
           )}
           <label htmlFor="file" className="button">{file ? "Choose a different file" : "Choose a file"}</label>
         </div>

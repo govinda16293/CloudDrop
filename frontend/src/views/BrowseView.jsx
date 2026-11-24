@@ -74,13 +74,18 @@ export default function BrowseView({ api, limits, mine = false }) {
 
   return (
     <>
-      <section className="hero">
-        <div className="hero-text">
+      {!mine && (
+        <figure className="banner">
+          <img src="/library.webp" alt="Reading floors of a campus library" />
+        </figure>
+      )}
+      <div className="page-head split">
+        <div>
           <h1>{mine ? "My uploads" : "Library"}</h1>
-          <p>{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students. Newest first."}</p>
+          <p className="muted">{mine ? "Files you have shared. Only you can delete them." : "Notes, lab manuals, slides and question papers shared by Thapar students. Newest first."}</p>
         </div>
-        <a className="button primary" href="#/upload"><Icon name="upload" /> Upload resource</a>
-      </section>
+        <a className="button primary" href="#/upload"><Icon name="upload" size={17} /> Upload</a>
+      </div>
 
       <form className="filters" role="search" onSubmit={(event) => event.preventDefault()}>
         <label className="field grow searchbox">
@@ -128,7 +133,7 @@ export default function BrowseView({ api, limits, mine = false }) {
       )}
 
       {items.length > 0 && state !== "loading" && (
-        <ul className="cards">
+        <ul className="entries">
           {items.map((file) => (
             <FileCard
               key={file.fileId}
