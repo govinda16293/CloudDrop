@@ -26,6 +26,7 @@ export default function BrowseView({ api, limits, mine = false, saved = false })
   const [summary, setSummary] = useState(null);
   const [copied, setCopied] = useState(false);
   const [savedIds, setSavedIds] = useState(() => new Set());
+  const [featuresOn, setFeaturesOn] = useState(false);
   const [refresh, setRefresh] = useState(0); // bumped by live updates to reload the list
   const [live, setLive] = useState(null); // the latest change another student made
   const [items, setItems] = useState([]);
@@ -52,8 +53,11 @@ export default function BrowseView({ api, limits, mine = false, saved = false })
   }, [api, mine, saved, refresh]);
 
   useEffect(() => {
-    if (!api.savedIds) return;
-    api.savedIds().then((ids) => setSavedIds(new Set(ids))).catch(() => {});
+    if (!api.hasFeatures) return;
+    api.hasFeatures().then((on) => {
+      setFeaturesOn(on);
+      if (on) api.savedIds().then((ids) => setSavedIds(new Set(ids))).catch(() => {});
+    });
   }, [api]);
 
   // Supabase Realtime pushes every insert and delete on the files table; reload quietly.
@@ -253,7 +257,8 @@ export default function BrowseView({ api, limits, mine = false, saved = false })
               onDeleted={(id) => setItems((current) => current.filter((item) => item.fileId !== id))}
               onTag={(tag) => setFilters((current) => ({ ...current, q: tag }))}
               isSaved={savedIds.has(file.fileId)}
-              onToggleSaved={api.setSaved ? () => toggleSaved(file.fileId) : null}
+              onToggleSaved={featuresOn ? () => toggleSaved(file.fileId) : null}
+              canReport={featuresOn}
             />
           ))}
         </ul>

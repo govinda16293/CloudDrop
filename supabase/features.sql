@@ -144,3 +144,6 @@ begin
 exception when duplicate_object then null;
 end;
 $$;
+
+-- Tell the API layer about the new tables straight away.
+notify pgrst, 'reload schema';

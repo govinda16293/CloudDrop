@@ -136,6 +136,8 @@ export default function AdminView({ api }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [featuresOn, setFeaturesOn] = useState(false);
+  useEffect(() => { api.hasFeatures?.().then(setFeaturesOn); }, [api]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -173,7 +175,7 @@ export default function AdminView({ api }) {
         <Tile label="Contributors" value={totals.uploaders} />
       </div>
 
-      {(api.listReports || api.activity) && (
+      {featuresOn && (
         <div className="grid-2">
           {api.listReports && <Reports api={api} />}
           {api.activity && <Activity api={api} />}

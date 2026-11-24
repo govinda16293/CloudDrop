@@ -45,6 +45,7 @@ export default function App() {
   const [bootError, setBootError] = useState(null);
   const [session, setSession] = useState({ state: "loading" }); // loading | signedOut | ready | error
   const [view, setView] = useState(viewFromHash);
+  const [featuresOn, setFeaturesOn] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +100,11 @@ export default function App() {
     refreshSession();
   }, [refreshSession]);
 
+  useEffect(() => {
+    if (!api?.hasFeatures || session.state !== "ready") return;
+    api.hasFeatures().then(setFeaturesOn);
+  }, [api, session.state]);
+
   async function signOut() {
     await boot.auth.signOut();
     window.location.hash = "";
@@ -135,7 +141,7 @@ export default function App() {
   }
 
   const { user, limits } = session;
-  const visible = VIEWS.filter((item) => (!item.adminOnly || user.isAdmin) && (!item.needs || api[item.needs]));
+  const visible = VIEWS.filter((item) => (!item.adminOnly || user.isAdmin) && (!item.needs || featuresOn));
   const current = visible.some((item) => item.id === view) ? view : "library";
 
   const initials = user.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();

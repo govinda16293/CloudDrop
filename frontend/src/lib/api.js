@@ -134,6 +134,7 @@ function toFile(row, userId) {
 
 export function createSupabaseApi(client) {
   let pending = new Map();
+  let featuresProbe = null;
 
   async function user() {
     // getSession reads local storage immediately. getUser performs a network
@@ -240,6 +241,15 @@ export function createSupabaseApi(client) {
       const downloadCount = countError ? row.download_count || 0 : Number(counted);
       return { url: data.signedUrl, downloadCount };
     },
+    // Saved files, reports and the activity log need supabase/features.sql.
+    // Ask once whether its tables exist, so the app can hide what is not set up yet.
+    hasFeatures() {
+      featuresProbe ??= Promise.resolve(client.from("bookmarks").select("file_id").limit(1))
+        .then((result) => !result.error)
+        .catch(() => false);
+      return featuresProbe;
+    },
+
     // ---- saved files ----
     async savedIds() {
       const { data, error } = await client.from("bookmarks").select("file_id");

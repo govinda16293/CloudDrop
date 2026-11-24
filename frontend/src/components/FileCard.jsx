@@ -12,7 +12,7 @@ function fileKind(name) {
 
 const REASONS = [["wrong-subject", "Wrong subject or details"], ["broken", "File is broken"], ["duplicate", "Duplicate"], ["inappropriate", "Inappropriate"]];
 
-export default function FileCard({ file, api, onDeleted, onTag, isSaved = false, onToggleSaved = null }) {
+export default function FileCard({ file, api, onDeleted, onTag, isSaved = false, onToggleSaved = null, canReport = false }) {
   const [downloads, setDownloads] = useState(file.downloadCount);
   const [busy, setBusy] = useState(null); // "download" | "delete"
   const [confirming, setConfirming] = useState(false);
@@ -124,7 +124,7 @@ export default function FileCard({ file, api, onDeleted, onTag, isSaved = false,
             <Icon name="bookmark" size={16} /> {isSaved ? "Saved" : "Save"}
           </button>
         )}
-        {api.reportFile && !file.isMine && !reported && !reporting && (
+        {canReport && !file.isMine && !reported && !reporting && (
           <button className="button quiet" onClick={() => setReporting(true)} title="Report a problem with this file"><Icon name="flag" size={15} /> Report</button>
         )}
         {reported && <span className="reported">Reported, thanks</span>}
